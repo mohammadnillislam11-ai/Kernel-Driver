@@ -25,9 +25,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
-          packages: 'platforms;android-34 build-tools;34.0.0'
+          packages: ''
+
+      - name: Accept Licenses & Set SDK Path
+        run: |
+          yes | sdkmanager --licenses || true
+          echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -35,7 +40,7 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace --info
+          ./gradlew clean assembleRelease --stacktrace
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
