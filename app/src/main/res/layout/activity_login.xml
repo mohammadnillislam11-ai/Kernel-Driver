@@ -14,8 +14,8 @@
         android:layout_height="76dp"
         app:cardCornerRadius="22dp"
         app:cardBackgroundColor="@color/apatch_surface_variant"
-        app:strokeColor="@color/apatch_outline"
-        app:strokeWidth="1dp">
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
 
         <ImageView
             android:layout_width="match_parent"
@@ -45,8 +45,9 @@
         app:boxCornerRadiusTopEnd="16dp"
         app:boxCornerRadiusBottomStart="16dp"
         app:boxCornerRadiusBottomEnd="16dp"
-        app:boxStrokeColor="@color/apatch_primary"
-        app:hintTextColor="@color/apatch_primary"
+        app:boxStrokeWidth="0dp"
+        app:boxStrokeWidthFocused="0dp"
+        app:boxBackgroundColor="@color/apatch_surface_variant"
         app:passwordToggleEnabled="true"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
@@ -79,7 +80,8 @@
         android:textColor="@color/apatch_on_primary"
         android:textSize="15sp"
         android:textStyle="bold"
-        app:cornerRadius="16dp"
+        app:cornerRadius="20dp"
+        app:strokeWidth="0dp"
         app:backgroundTint="@color/apatch_primary" />
 
 </LinearLayout>

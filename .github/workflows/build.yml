@@ -80,14 +80,16 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.3
-          name: "NINMODS Kernel Driver Loader v1.0.3 (Official Release)"
+          tag: v1.0.4
+          name: "NINMODS Kernel Driver Loader v1.0.4 (Official Release)"
           body: |
-            ## NINMODS Official Release v1.0.3
-            - **Dialog Driver Picker**: Clicking QX or RT opens an official Material dialog showing only kernel-matching drivers.
-            - **Stop Driver Logic**: Enabled strictly when a driver is actively loaded.
-            - **Clean Headers**: Subtitles removed across all screens.
-            - **Bug-Free Nav Bar**: Fixed icon tinting and smooth floating pill transitions.
+            ## NINMODS Official Release v1.0.4
+            - **Official Borderless APatch UI**: Removed all card & button borders (0dp stroke) for clean surface styling.
+            - **Clean Minimalist Headers**: Removed subtitles across all screens.
+            - **Kernel Matching Dialog Picker**: QX and RT open official Material dialogs with device-compatible modules.
+            - **Stop Driver Logic**: Button is enabled strictly when a kernel driver is actively loaded.
+            - **4 Apps Dashboard**: Clean side-by-side app launcher layout.
+            - **Google Code Obfuscator**: R8 & ProGuard minification active.
             - **Google Code Obfuscator**: Active R8 minification.
           artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true

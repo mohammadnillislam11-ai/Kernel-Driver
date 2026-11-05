@@ -22,7 +22,7 @@
             android:textSize="26sp"
             android:textStyle="bold" />
 
-        <!-- SuperUser & Environment Card -->
+        <!-- SuperUser & Environment Card (Borderless) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -38,8 +38,8 @@
             android:layout_marginTop="8dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp">
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -73,7 +73,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginVertical="12dp"
-                    android:background="@color/apatch_outline" />
+                    android:background="@color/apatch_surface_variant" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -100,7 +100,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Session & Security Card -->
+        <!-- Session & Security Card (Borderless) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -116,8 +116,8 @@
             android:layout_marginTop="8dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp">
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -141,17 +141,18 @@
                     android:layout_marginTop="14dp"
                     android:text="Sign Out"
                     android:textColor="@color/apatch_error"
-                    app:strokeColor="@color/apatch_error"
-                    app:strokeWidth="1dp"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    app:cornerRadius="16dp"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    app:backgroundTint="@color/apatch_error_container"
+                    app:cornerRadius="20dp"
                     app:icon="@drawable/trash"
-                    app:iconTint="@color/apatch_error" />
+                    app:iconTint="@color/apatch_error"
+                    app:strokeWidth="0dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Official Channel Card -->
+        <!-- Official Channel Card (Borderless) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -167,8 +168,8 @@
             android:layout_marginTop="8dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp">
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:id="@+id/layoutTelegram"
