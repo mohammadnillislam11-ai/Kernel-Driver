@@ -1,5 +1,8 @@
 package com.andorid.ninmods.ui.compose
 
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.andorid.ninmods.data.SessionManager
@@ -64,6 +68,29 @@ fun MainAppScreen(
 ) {
     var currentDestination by remember { mutableStateOf(MainDestination.LOADER) }
     var previousDestination by remember { mutableStateOf(MainDestination.LOADER) }
+    var lastBackPressTime by remember { mutableStateOf(0L) }
+    val context = LocalContext.current
+
+    // APatch Official BackHandler: Subpages/Tabs navigate back to Home; double back on Home to exit
+    BackHandler(enabled = true) {
+        when {
+            currentDestination == MainDestination.PROFILE -> {
+                currentDestination = previousDestination
+            }
+            currentDestination != MainDestination.LOADER -> {
+                currentDestination = MainDestination.LOADER
+            }
+            else -> {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressTime < 2000L) {
+                    (context as? Activity)?.finish()
+                } else {
+                    lastBackPressTime = now
+                    Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     val bottomBarDestinations = listOf(
         MainDestination.DASHBOARD,

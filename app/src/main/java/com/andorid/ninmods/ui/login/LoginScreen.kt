@@ -1,5 +1,6 @@
 package com.andorid.ninmods.ui.login
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +70,11 @@ fun LoginScreen(
     onLoginSuccess: (email: String, name: String, remember: Boolean) -> Unit
 ) {
     var authState by remember { mutableStateOf(AuthScreenState.LOGIN) }
+
+    // If on SignUp or ForgotPassword, hardware/gesture back press navigates back to Login screen
+    BackHandler(enabled = authState != AuthScreenState.LOGIN) {
+        authState = AuthScreenState.LOGIN
+    }
 
     APatchTheme {
         Scaffold(
