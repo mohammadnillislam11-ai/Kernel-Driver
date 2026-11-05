@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/apatch_background"
     android:paddingHorizontal="16dp"
-    android:paddingTop="16dp"
+    android:paddingTop="20dp"
     android:paddingBottom="96dp">
 
     <LinearLayout
@@ -13,38 +13,28 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Top Title Header -->
+        <!-- Header -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="NinMods"
+            android:text="Dashboard"
             android:textColor="@color/apatch_text_primary"
-            android:textSize="26sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Available Game Mods &amp; Active Engines"
+            android:text="Installed Apps &amp; Mods"
             android:textColor="@color/apatch_text_secondary"
             android:textSize="13sp" />
 
-        <!-- Available Mods Grid Card -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="AVAILABLE CLIENT MODS"
-            android:textColor="@color/apatch_primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <!-- Mod 1: Free Fire External Engine (gemini-cli) -->
+        <!-- 4 Apps Side by Side Layout -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="20dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
             app:strokeColor="@color/apatch_outline"
@@ -54,169 +44,160 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:paddingVertical="20dp"
+                android:paddingHorizontal="8dp">
 
-                <ImageView
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:src="@drawable/logo_n" />
-
+                <!-- App 1: Free Fire -->
                 <LinearLayout
+                    android:id="@+id/appItem1"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardBackgroundColor="@color/apatch_surface_variant"
+                        app:strokeColor="@color/apatch_outline"
+                        app:strokeWidth="1dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="8dp"
+                            android:src="@drawable/logo_n" />
+                    </com.google.android.material.card.MaterialCardView>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Free Fire Engine"
+                        android:layout_marginTop="8dp"
+                        android:text="Free Fire"
                         android:textColor="@color/apatch_text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="External Memory Engine (gemini-cli)"
-                        android:textColor="@color/apatch_text_secondary"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Status: Ready / Memory Resident"
-                        android:textColor="@color/apatch_success"
-                        android:textSize="11sp"
-                        android:fontFamily="monospace" />
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:singleLine="true" />
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_nav_tuning"
-                    app:tint="@color/apatch_primary" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Mod 2: Free Fire MAX Client -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="16dp">
-
-                <ImageView
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:src="@drawable/ic_launcher" />
-
+                <!-- App 2: Free Fire MAX -->
                 <LinearLayout
+                    android:id="@+id/appItem2"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardBackgroundColor="@color/apatch_surface_variant"
+                        app:strokeColor="@color/apatch_outline"
+                        app:strokeWidth="1dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_launcher" />
+                    </com.google.android.material.card.MaterialCardView>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Free Fire MAX"
+                        android:layout_marginTop="8dp"
+                        android:text="FF MAX"
                         android:textColor="@color/apatch_text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="com.dts.freefiremax (64-bit ARMv8)"
-                        android:textColor="@color/apatch_text_secondary"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Status: Supported / Target Standby"
-                        android:textColor="@color/apatch_secondary"
-                        android:textSize="11sp"
-                        android:fontFamily="monospace" />
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:singleLine="true" />
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_nav_tuning"
-                    app:tint="@color/apatch_secondary" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Kernel Driver State Banner -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="KERNEL DRIVER BACKBONE"
-            android:textColor="@color/apatch_primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/tvDashKernel"
-                    android:layout_width="wrap_content"
+                <!-- App 3: Memory Engine -->
+                <LinearLayout
+                    android:id="@+id/appItem3"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Kernel: Loading..."
-                    android:textColor="@color/apatch_text_primary"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
-                    android:textStyle="bold" />
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:clickable="true"
+                    android:focusable="true">
 
-                <TextView
-                    android:id="@+id/tvDashNodes"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Driver Node: /dev/BYNb"
-                    android:textColor="@color/apatch_primary"
-                    android:textSize="13sp" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardBackgroundColor="@color/apatch_surface_variant"
+                        app:strokeColor="@color/apatch_outline"
+                        app:strokeWidth="1dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_nav_tuning"
+                            app:tint="@color/apatch_primary" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Engine"
+                        android:textColor="@color/apatch_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:singleLine="true" />
+                </LinearLayout>
+
+                <!-- App 4: Injector Tool -->
+                <LinearLayout
+                    android:id="@+id/appItem4"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="To switch or load new .ko.sh modules, navigate to the Driver Loader tab below."
-                    android:textColor="@color/apatch_text_secondary"
-                    android:textSize="12sp" />
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardBackgroundColor="@color/apatch_surface_variant"
+                        app:strokeColor="@color/apatch_outline"
+                        app:strokeWidth="1dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="12dp"
+                            android:src="@drawable/play_circle"
+                            app:tint="@color/apatch_primary" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Injector"
+                        android:textColor="@color/apatch_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:singleLine="true" />
+                </LinearLayout>
+
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

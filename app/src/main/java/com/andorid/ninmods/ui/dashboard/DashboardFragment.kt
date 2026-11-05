@@ -4,14 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.andorid.ninmods.databinding.FragmentDashboardBinding
 import com.andorid.ninmods.ui.MainViewModel
-import kotlinx.coroutines.launch
 
 class DashboardFragment : Fragment() {
 
@@ -31,17 +28,26 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    binding.tvDashKernel.text = "Kernel: ${state.kernelRelease}"
-                    binding.tvDashNodes.text = if (state.activeNodes.isNotEmpty()) {
-                        "Driver Node: ${state.activeNodes.joinToString(", ")} (Active)"
-                    } else {
-                        "Driver Node: None Active (/dev/BYNb missing)"
-                    }
-                }
-            }
+        binding.appItem1.setOnClickListener {
+            launchOrNotifyApp("com.dts.freefireth", "Free Fire")
+        }
+        binding.appItem2.setOnClickListener {
+            launchOrNotifyApp("com.dts.freefiremax", "Free Fire MAX")
+        }
+        binding.appItem3.setOnClickListener {
+            Toast.makeText(requireContext(), "Engine Ready", Toast.LENGTH_SHORT).show()
+        }
+        binding.appItem4.setOnClickListener {
+            Toast.makeText(requireContext(), "Injector Ready", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun launchOrNotifyApp(packageName: String, appName: String) {
+        val launchIntent = requireContext().packageManager.getLaunchIntentForPackage(packageName)
+        if (launchIntent != null) {
+            startActivity(launchIntent)
+        } else {
+            Toast.makeText(requireContext(), "$appName ready for launch", Toast.LENGTH_SHORT).show()
         }
     }
 

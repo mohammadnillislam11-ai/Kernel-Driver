@@ -1,220 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/apatch_background"
-    android:fillViewport="true">
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp">
 
-    <LinearLayout
+    <!-- Logo -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="76dp"
+        android:layout_height="76dp"
+        app:cardCornerRadius="22dp"
+        app:cardBackgroundColor="@color/apatch_surface_variant"
+        app:strokeColor="@color/apatch_outline"
+        app:strokeWidth="1dp">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="12dp"
+            android:src="@drawable/logo_n" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- App Name -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="NinMods"
+        android:textColor="@color/apatch_text_primary"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <!-- Access Key Input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilAccessKey"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingHorizontal="24dp"
-        android:paddingTop="56dp"
-        android:paddingBottom="32dp">
+        android:layout_marginTop="28dp"
+        android:hint="Access Key"
+        app:boxCornerRadiusTopStart="16dp"
+        app:boxCornerRadiusTopEnd="16dp"
+        app:boxCornerRadiusBottomStart="16dp"
+        app:boxCornerRadiusBottomEnd="16dp"
+        app:boxStrokeColor="@color/apatch_primary"
+        app:hintTextColor="@color/apatch_primary"
+        app:passwordToggleEnabled="true"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
-        <!-- Header / Logo -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            app:cardCornerRadius="28dp"
-            app:cardBackgroundColor="@color/apatch_surface_variant"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp"
-            app:cardElevation="6dp">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="16dp"
-                android:src="@drawable/logo_n"
-                android:contentDescription="NINMODS Logo" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Title & Subtitle in APatch Typography -->
-        <TextView
-            android:layout_width="wrap_content"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etAccessKey"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="NINMODS Kernel"
+            android:inputType="textPassword"
             android:textColor="@color/apatch_text_primary"
-            android:textSize="26sp"
-            android:textStyle="bold" />
+            android:singleLine="true" />
+    </com.google.android.material.textfield.TextInputLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="NinMods Driver Loader &amp; SuperUser Subsystem"
-            android:textColor="@color/apatch_text_secondary"
-            android:textSize="13sp"
-            android:textAlignment="center" />
+    <!-- Remember Checkbox -->
+    <CheckBox
+        android:id="@+id/cbRemember"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Remember session"
+        android:textColor="@color/apatch_text_secondary"
+        android:checked="true" />
 
-        <!-- APatch Official Warning/Security Card Structure -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="#221C1B"
-            app:strokeColor="#5B3E3B"
-            app:strokeWidth="1dp"
-            app:cardElevation="2dp">
+    <!-- Login Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="20dp"
+        android:text="Login"
+        android:textColor="@color/apatch_on_primary"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:cornerRadius="16dp"
+        app:backgroundTint="@color/apatch_primary" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="16dp">
-
-                <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/info_circle_filled"
-                    app:tint="@color/apatch_error" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SuperUser Verification"
-                        android:textColor="@color/apatch_error"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Please authenticate to access kernel module dispatcher and resident memory engines."
-                        android:textColor="@color/apatch_text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Main Authentication Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            app:cardCornerRadius="24dp"
-            app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp"
-            app:cardElevation="4dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="LOGIN CREDENTIALS"
-                    android:textColor="@color/apatch_primary"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-
-                <!-- Access Key Input -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilAccessKey"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:hint="Access Key / License Key"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/apatch_primary"
-                    app:hintTextColor="@color/apatch_primary"
-                    app:endIconMode="password_toggle">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etAccessKey"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword"
-                        android:textColor="@color/apatch_text_primary"
-                        android:textSize="15sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Remember Checkbox in APatch Styling -->
-                <com.google.android.material.checkbox.MaterialCheckBox
-                    android:id="@+id/cbRemember"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:checked="true"
-                    android:text="Remember login credentials"
-                    android:textColor="@color/apatch_text_secondary"
-                    android:textSize="13sp" />
-
-                <!-- Login Button (APatch M3 FilledTonalButton style) -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnLogin"
-                    android:layout_width="match_parent"
-                    android:layout_height="54dp"
-                    android:layout_marginTop="16dp"
-                    android:text="Authenticate &amp; Launch"
-                    android:textColor="@color/apatch_on_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="@color/apatch_primary"
-                    app:cornerRadius="20dp"
-                    app:icon="@drawable/play_circle"
-                    app:iconGravity="textStart"
-                    app:iconTint="@color/apatch_on_primary" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- System Status Badge -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/apatch_pill_selected"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="8dp">
-
-            <View
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:background="@drawable/apatch_dot_online" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="NinMods Engine Active • GKI Ready"
-                android:textColor="@color/apatch_primary"
-                android:textSize="12sp"
-                android:fontFamily="monospace" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Version 1.0.0 (Official Build)"
-            android:textColor="#666666"
-            android:textSize="11sp" />
-
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/apatch_background"
     android:paddingHorizontal="16dp"
-    android:paddingTop="16dp"
+    android:paddingTop="20dp"
     android:paddingBottom="96dp">
 
     <LinearLayout
@@ -13,29 +13,29 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- APatch Top Title -->
+        <!-- Header -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Settings"
             android:textColor="@color/apatch_text_primary"
-            android:textSize="26sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="NinMods Driver Loader &amp; Security"
+            android:text="Preferences &amp; Session"
             android:textColor="@color/apatch_text_secondary"
             android:textSize="13sp" />
 
-        <!-- Category: SuperUser & Kernel Environment -->
+        <!-- SuperUser & Environment Card -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="SUPERUSER &amp; ENVIRONMENT"
+            android:layout_marginTop="20dp"
+            android:text="ENVIRONMENT"
             android:textColor="@color/apatch_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -43,7 +43,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
             app:strokeColor="@color/apatch_outline"
@@ -61,28 +61,14 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <LinearLayout
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Global namespace mode"
-                            android:textColor="@color/apatch_text_primary"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="All root sessions use the global mount namespace"
-                            android:textColor="@color/apatch_text_secondary"
-                            android:textSize="12sp" />
-                    </LinearLayout>
+                        android:text="Global Namespace"
+                        android:textColor="@color/apatch_text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/swGlobalNamespace"
@@ -103,28 +89,14 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <LinearLayout
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Legacy su compatibility"
-                            android:textColor="@color/apatch_text_primary"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Enable legacy su compatibility for external engine callers"
-                            android:textColor="@color/apatch_text_secondary"
-                            android:textSize="12sp" />
-                    </LinearLayout>
+                        android:text="Legacy su Compatibility"
+                        android:textColor="@color/apatch_text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/swLegacySu"
@@ -136,12 +108,12 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Category: Session & Authentication -->
+        <!-- Session & Security Card -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="SESSION &amp; SECURITY"
+            android:layout_marginTop="20dp"
+            android:text="SESSION"
             android:textColor="@color/apatch_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -149,7 +121,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
             app:strokeColor="@color/apatch_outline"
@@ -162,21 +134,12 @@
                 android:padding="16dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Current Authentication Token"
-                    android:textColor="@color/apatch_text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <TextView
                     android:id="@+id/tvCurrentAuthKey"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Token: Verified (Active Session)"
+                    android:text="Session: Active"
                     android:textColor="@color/apatch_success"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
                     android:fontFamily="monospace" />
 
                 <com.google.android.material.button.MaterialButton
@@ -184,7 +147,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="14dp"
-                    android:text="Sign Out / Lock Workspace"
+                    android:text="Sign Out"
                     android:textColor="@color/apatch_error"
                     app:strokeColor="@color/apatch_error"
                     app:strokeWidth="1dp"
@@ -196,12 +159,12 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Category: Official Links -->
+        <!-- Official Channel Card -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="OFFICIAL CHANNELS"
+            android:layout_marginTop="20dp"
+            android:text="COMMUNITY"
             android:textColor="@color/apatch_primary"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -209,42 +172,35 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
             app:strokeColor="@color/apatch_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
+                android:id="@+id/layoutTelegram"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true">
 
-                <LinearLayout
-                    android:id="@+id/layoutTelegram"
-                    android:layout_width="match_parent"
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/telegram"
+                    app:tint="@color/apatch_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:clickable="true"
-                    android:focusable="true">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/telegram"
-                        app:tint="@color/apatch_primary" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:text="Telegram Community (@ninmods)"
-                        android:textColor="@color/apatch_text_primary"
-                        android:textSize="15sp" />
-                </LinearLayout>
-
+                    android:layout_marginStart="14dp"
+                    android:text="Telegram (@ninmods)"
+                    android:textColor="@color/apatch_text_primary"
+                    android:textSize="15sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

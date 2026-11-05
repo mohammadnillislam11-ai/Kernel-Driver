@@ -57,31 +57,32 @@ class HomeFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    // Hero Card Status
-                    binding.tvStatusSubtitle.text = if (state.isDriverLoaded) {
-                        "Driver Active & Bound to Kernel"
+                    // Card 1: Kernel Driver
+                    if (state.isDriverLoaded) {
+                        binding.tvDriverState.text = "Working"
+                        binding.tvDriverState.setTextColor(0xFF81C784.toInt())
                     } else {
-                        "No Active Character Device Node"
+                        binding.tvDriverState.text = "Not Loaded"
+                        binding.tvDriverState.setTextColor(0xFFFFB4AB.toInt())
+                    }
+                    binding.tvKernelVersion.text = if (state.kernelRelease.isNotEmpty()) {
+                        "Linux ${state.kernelRelease}"
+                    } else {
+                        "Linux Detecting..."
                     }
 
-                    binding.tvHeroBadge.text = if (state.isDriverLoaded) {
-                        getString(R.string.status_active)
+                    // Card 2: SuperUser
+                    if (state.isRootAvailable) {
+                        binding.tvSuperuserState.text = "Granted (uid=0)"
+                        binding.tvSuperuserState.setTextColor(0xFF81C784.toInt())
                     } else {
-                        getString(R.string.status_inactive)
+                        binding.tvSuperuserState.text = "Denied / Required"
+                        binding.tvSuperuserState.setTextColor(0xFFFFB4AB.toInt())
                     }
-
-                    // Details
-                    binding.tvKernelDetail.text = "Linux Kernel: ${state.kernelRelease}"
-                    binding.tvSuperuserDetail.text = if (state.isRootAvailable) {
-                        "Superuser: Root Access Granted (uid=0)"
+                    binding.tvNodesSummary.text = if (state.activeNodes.isNotEmpty()) {
+                        state.activeNodes.joinToString(", ")
                     } else {
-                        "Superuser: Root Access Denied / Required!"
-                    }
-
-                    binding.tvNodesDetail.text = if (state.activeNodes.isNotEmpty()) {
-                        "Nodes: ${state.activeNodes.joinToString(", ")}"
-                    } else {
-                        "Nodes: None Active (/dev/BYNb missing)"
+                        "No Node Active"
                     }
 
                     // Button States
@@ -89,7 +90,7 @@ class HomeFragment : Fragment() {
                     binding.btnQuickLoadRt.isEnabled = !state.isWorking && state.isRootAvailable
                     binding.btnQuickUnload.isEnabled = !state.isWorking && state.isRootAvailable
 
-                    // Live Output Log
+                    // Live Log Output
                     binding.tvHomeConsoleLog.text = state.logMessages.joinToString("\n")
                     binding.scrollHomeLog.post {
                         binding.scrollHomeLog.fullScroll(View.FOCUS_DOWN)

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/apatch_background"
     android:paddingHorizontal="16dp"
-    android:paddingTop="16dp"
+    android:paddingTop="20dp"
     android:paddingBottom="96dp">
 
     <LinearLayout
@@ -13,159 +13,155 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Top Title Header -->
+        <!-- Top Header -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Driver Loader"
             android:textColor="@color/apatch_text_primary"
-            android:textSize="26sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Kernel Driver Controller &amp; Live Console"
+            android:text="Kernel Driver &amp; SuperUser"
             android:textColor="@color/apatch_text_secondary"
             android:textSize="13sp" />
 
-        <!-- Category Header: System Status -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="KERNEL DRIVER STATUS"
-            android:textColor="@color/apatch_primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <!-- Hero Status Card -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- APatch-style 2 Side-by-Side Status Cards -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="@color/apatch_surface"
-            app:strokeColor="@color/apatch_outline"
-            app:strokeWidth="1dp">
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <!-- Card 1: Kernel Driver Card (Left) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="@color/apatch_surface"
+                app:strokeColor="@color/apatch_outline"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <ImageView
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:src="@drawable/ic_nav_home"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_nav_home_fill"
                         app:tint="@color/apatch_primary" />
 
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Kernel Driver"
-                            android:textColor="@color/apatch_text_primary"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvStatusSubtitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Installed &amp; Active"
-                            android:textColor="@color/apatch_text_secondary"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-
                     <TextView
-                        android:id="@+id/tvHeroBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/status_active"
-                        android:textStyle="bold"
-                        android:textSize="11sp"
+                        android:layout_marginTop="12dp"
+                        android:text="Kernel Driver"
                         android:textColor="@color/apatch_text_primary"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="6dp"
-                        android:background="@drawable/badge_bg" />
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvDriverState"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Working"
+                        android:textColor="@color/apatch_success"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvKernelVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Linux 4.19"
+                        android:textColor="@color/apatch_text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="monospace"
+                        android:singleLine="true" />
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <View
+            <!-- Card 2: SuperUser / Root Card (Right) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                app:cardCornerRadius="20dp"
+                app:cardBackgroundColor="@color/apatch_surface"
+                app:strokeColor="@color/apatch_outline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginVertical="16dp"
-                    android:background="@color/apatch_outline" />
-
-                <!-- Kernel & Superuser Details -->
-                <TextView
-                    android:id="@+id/tvKernelDetail"
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Linux Kernel: Loading..."
-                    android:textColor="@color/apatch_text_primary"
-                    android:textSize="13sp"
-                    android:fontFamily="monospace" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/tvSuperuserDetail"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Superuser: Root Access Granted (uid=0)"
-                    android:textColor="@color/apatch_text_secondary"
-                    android:textSize="13sp" />
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/info_circle_filled"
+                        app:tint="@color/apatch_primary" />
 
-                <TextView
-                    android:id="@+id/tvNodesDetail"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Node: /dev/BYNb"
-                    android:textColor="@color/apatch_primary"
-                    android:textSize="13sp"
-                    android:fontFamily="monospace" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="SuperUser"
+                        android:textColor="@color/apatch_text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
 
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <TextView
+                        android:id="@+id/tvSuperuserState"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Granted"
+                        android:textColor="@color/apatch_success"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
-        <!-- Driver Controls Card -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:layout_marginStart="4dp"
-            android:text="@string/driver_actions_title"
-            android:textColor="@color/apatch_primary"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/tvNodesSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Node: /dev/BYNb"
+                        android:textColor="@color/apatch_text_secondary"
+                        android:textSize="11sp"
+                        android:fontFamily="monospace"
+                        android:singleLine="true" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
+        </LinearLayout>
+
+        <!-- Driver Action Controls -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="16dp"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnQuickLoadQx"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
+                android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="@string/btn_load_qx"
+                android:text="Load QX"
                 android:textColor="@color/apatch_on_primary"
                 android:textStyle="bold"
                 app:icon="@drawable/play_circle"
@@ -174,15 +170,15 @@
                 app:cornerRadius="16dp" />
 
             <Space
-                android:layout_width="12dp"
+                android:layout_width="10dp"
                 android:layout_height="wrap_content" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnQuickLoadRt"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
+                android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="@string/btn_load_rt"
+                android:text="Load RT"
                 android:textColor="@color/apatch_text_primary"
                 android:textStyle="bold"
                 app:icon="@drawable/device_mobile_down"
@@ -195,20 +191,20 @@
             android:id="@+id/btnQuickUnload"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_height="48dp"
             android:layout_marginTop="10dp"
-            android:text="@string/btn_unload"
+            android:text="Unload Driver"
             android:textColor="@color/apatch_error"
             app:strokeColor="@color/apatch_error"
             app:icon="@drawable/trash"
             app:iconTint="@color/apatch_error"
-            app:cornerRadius="14dp" />
+            app:cornerRadius="16dp" />
 
-        <!-- Real-Time Console Card (APatch Embedded Terminal) -->
+        <!-- Console Header & Clear -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="18dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -216,25 +212,26 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/console_output_title"
+                android:text="TERMINAL LOG"
                 android:textColor="@color/apatch_text_secondary"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/btnHomeClearLog"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/btn_clear_log"
+                android:text="Clear"
                 android:textColor="@color/apatch_primary"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:padding="6dp" />
         </LinearLayout>
 
+        <!-- Live Terminal -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:layout_marginTop="8dp"
+            android:layout_height="180dp"
+            android:layout_marginTop="6dp"
             app:cardCornerRadius="16dp"
             app:cardBackgroundColor="@color/apatch_terminal_bg"
             app:strokeColor="@color/apatch_outline"

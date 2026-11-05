@@ -9,10 +9,9 @@
     <FrameLayout
         android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:paddingBottom="96dp" />
+        android:layout_height="match_parent" />
 
-    <!-- APatch Exact Floating Capsule Bottom Navigation Bar -->
+    <!-- APatch Exact Floating Capsule Bottom Navigation Bar (Icon Buttons Only) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -23,112 +22,56 @@
         <LinearLayout
             android:id="@+id/floatingBar"
             android:layout_width="wrap_content"
-            android:layout_height="64dp"
+            android:layout_height="60dp"
             android:background="@drawable/apatch_floating_bar_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:elevation="12dp"
-            android:paddingHorizontal="10dp">
+            android:paddingHorizontal="8dp">
 
-            <!-- 1. Home / Dashboard Tab (Pill Expandable) -->
-            <LinearLayout
-                android:id="@+id/tabHome"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
+            <!-- 1. Dashboard Tab (Home Icon) -->
+            <FrameLayout
+                android:id="@+id/tabDashboard"
+                android:layout_width="56dp"
+                android:layout_height="44dp"
+                android:layout_marginHorizontal="4dp"
                 android:background="@drawable/apatch_pill_selected"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingHorizontal="18dp"
                 android:clickable="true"
                 android:focusable="true">
 
                 <ImageView
-                    android:id="@+id/iconHome"
+                    android:id="@+id/iconDashboard"
                     android:layout_width="22dp"
                     android:layout_height="22dp"
+                    android:layout_gravity="center"
                     android:src="@drawable/ic_nav_home_fill"
-                    app:tint="#D0BCFF" />
+                    app:tint="@color/apatch_primary" />
+            </FrameLayout>
 
-                <TextView
-                    android:id="@+id/textHome"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Home"
-                    android:textColor="#E3E2E6"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:visibility="visible" />
-            </LinearLayout>
-
-            <!-- 2. Driver Loader Tab (Wrench Tool Icon Button) -->
-            <LinearLayout
-                android:id="@+id/tabDrivers"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingHorizontal="16dp"
+            <!-- 2. Driver Loader Tab (Wrench Icon) -->
+            <FrameLayout
+                android:id="@+id/tabLoader"
+                android:layout_width="56dp"
+                android:layout_height="44dp"
+                android:layout_marginHorizontal="4dp"
                 android:clickable="true"
                 android:focusable="true">
 
                 <ImageView
-                    android:id="@+id/iconDrivers"
+                    android:id="@+id/iconLoader"
                     android:layout_width="22dp"
                     android:layout_height="22dp"
+                    android:layout_gravity="center"
                     android:src="@drawable/ic_nav_wrench"
                     app:tint="#939AA5" />
+            </FrameLayout>
 
-                <TextView
-                    android:id="@+id/textDrivers"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Loader"
-                    android:textColor="#E3E2E6"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:visibility="gone" />
-            </LinearLayout>
-
-            <!-- 3. Tuning / Modules Tab (Slider Tuning Icon Button) -->
-            <LinearLayout
-                android:id="@+id/tabTuning"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingHorizontal="16dp"
-                android:clickable="true"
-                android:focusable="true">
-
-                <ImageView
-                    android:id="@+id/iconTuning"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:src="@drawable/ic_nav_tuning"
-                    app:tint="#939AA5" />
-
-                <TextView
-                    android:id="@+id/textTuning"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Drivers"
-                    android:textColor="#E3E2E6"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:visibility="gone" />
-            </LinearLayout>
-
-            <!-- 4. Settings Tab (Gear Icon Button) -->
-            <LinearLayout
+            <!-- 3. Settings Tab (Gear Icon) -->
+            <FrameLayout
                 android:id="@+id/tabSettings"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingHorizontal="16dp"
+                android:layout_width="56dp"
+                android:layout_height="44dp"
+                android:layout_marginHorizontal="4dp"
                 android:clickable="true"
                 android:focusable="true">
 
@@ -136,20 +79,10 @@
                     android:id="@+id/iconSettings"
                     android:layout_width="22dp"
                     android:layout_height="22dp"
+                    android:layout_gravity="center"
                     android:src="@drawable/ic_nav_gear"
                     app:tint="#939AA5" />
-
-                <TextView
-                    android:id="@+id/textSettings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Settings"
-                    android:textColor="#E3E2E6"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:visibility="gone" />
-            </LinearLayout>
+            </FrameLayout>
 
         </LinearLayout>
     </LinearLayout>
