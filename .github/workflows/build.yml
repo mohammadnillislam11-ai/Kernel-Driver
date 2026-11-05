@@ -53,12 +53,18 @@ jobs:
           path: build.log
           retention-days: 7
 
+      - name: Prepare Release APK
+        run: |
+          mkdir -p dist
+          find app/build/outputs/apk -name "*.apk" -exec cp -v {} dist/NINMODS-DriverLoader-v1.0.0.apk \;
+          ls -lh dist/
+
       - name: Upload Release Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DriverLoader-Release
-          path: app/build/outputs/apk/release/*.apk
+          path: dist/*.apk
           retention-days: 14
 
       - name: Publish to GitHub Releases
@@ -69,7 +75,7 @@ jobs:
           tag: v1.0.0
           name: "NINMODS Kernel Driver Loader v1.0.0"
           body: "Official Release v1.0.0: Protected with Google R8/ProGuard Obfuscator, official APatch Jetpack Compose UI architecture, and 410+ Master Kernel Drivers."
-          artifacts: "app/build/outputs/apk/release/*.apk"
+          artifacts: "dist/NINMODS-DriverLoader-v1.0.0.apk"
           allowUpdates: true
           replacesArtifacts: true
           makeLatest: true
