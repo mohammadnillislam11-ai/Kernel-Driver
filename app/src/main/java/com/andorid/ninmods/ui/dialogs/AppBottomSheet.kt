@@ -1,8 +1,11 @@
 package com.andorid.ninmods.ui.dialogs
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -20,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.BottomSheetDefaults
@@ -151,15 +155,11 @@ fun <T> AppSelectionBottomSheet(
                                 color = if (isSelected) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
-                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 }
                             ),
                             colors = CardDefaults.outlinedCardColors(
-                                containerColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                }
+                                containerColor = MaterialTheme.colorScheme.surface
                             )
                         ) {
                             Row(
@@ -172,9 +172,9 @@ fun <T> AppSelectionBottomSheet(
                                 Surface(
                                     shape = CircleShape,
                                     color = if (isSelected) {
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                                     } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                     },
                                     modifier = Modifier.size(46.dp)
                                 ) {
@@ -208,20 +208,33 @@ fun <T> AppSelectionBottomSheet(
 
                                 Spacer(modifier = Modifier.width(12.dp))
 
-                                // Dynamic checkmark matching App UI theme
+                                // Official Circular Selection Badge (1:1 with Screenshot & APatch)
                                 if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.CheckCircle,
-                                        contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(26.dp)
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Check,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
                                 } else {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Circle,
-                                        contentDescription = "Not selected",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-                                        modifier = Modifier.size(26.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .border(
+                                                width = 1.5.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                                                shape = CircleShape
+                                            )
                                     )
                                 }
                             }
