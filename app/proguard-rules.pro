@@ -1,5 +1,5 @@
 # ProGuard / R8 Obfuscator and Optimization Rules
--repackageclasses 'com.andorid.ninmods.internal'
+-repackageclasses com.andorid.ninmods.internal
 -allowaccessmodification
 
 # Optimization passes
