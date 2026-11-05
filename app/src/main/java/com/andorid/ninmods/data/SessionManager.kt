@@ -23,13 +23,50 @@ class SessionManager(context: Context) {
         get() {
             var exp = prefs.getLong(KEY_LICENSE_EXPIRY, 0L)
             if (exp == 0L) {
-                // Default 24 hours license expiration from first session initialization
                 exp = System.currentTimeMillis() + (24 * 60 * 60 * 1000L)
                 prefs.edit().putLong(KEY_LICENSE_EXPIRY, exp).apply()
             }
             return exp
         }
         set(value) = prefs.edit().putLong(KEY_LICENSE_EXPIRY, value).apply()
+
+    /**
+     * Server-Authoritative License Duration (Immune to Device Clock Tampering).
+     * Uses SystemClock.elapsedRealtime() which is monotonic and cannot be modified by user settings.
+     */
+    var serverRemainingSeconds: Long
+        get() = prefs.getLong("server_remaining_sec", 0L)
+        set(value) {
+            prefs.edit()
+                .putLong("server_remaining_sec", value)
+                .putLong("sync_uptime_ms", android.os.SystemClock.elapsedRealtime())
+                .putLong("sync_wall_time_ms", System.currentTimeMillis())
+                .apply()
+        }
+
+    val liveRemainingSeconds: Long
+        get() {
+            val base = serverRemainingSeconds
+            if (base <= 0L) return 0L
+            val syncUptime = prefs.getLong("sync_uptime_ms", 0L)
+            if (syncUptime == 0L) return base
+
+            val currentUptime = android.os.SystemClock.elapsedRealtime()
+            val elapsedSec: Long = if (currentUptime >= syncUptime) {
+                // Monotonic counter: Immune to user date/time adjustments
+                (currentUptime - syncUptime) / 1000L
+            } else {
+                // Device reboot detected: Uptime reset to 0
+                val syncWall = prefs.getLong("sync_wall_time_ms", 0L)
+                if (syncWall > 0L) {
+                    val wallDelta = (System.currentTimeMillis() - syncWall) / 1000L
+                    kotlin.math.max(0L, wallDelta)
+                } else {
+                    0L
+                }
+            }
+            return kotlin.math.max(0L, base - elapsedSec)
+        }
 
     var isEnvironmentSetup: Boolean
         get() = prefs.getBoolean(KEY_IS_SETUP, false)
@@ -54,6 +91,22 @@ class SessionManager(context: Context) {
     var userPassword: String?
         get() = prefs.getString(KEY_USER_PASSWORD, "")
         set(value) = prefs.edit().putString(KEY_USER_PASSWORD, value).apply()
+
+    var userRole: String
+        get() = prefs.getString("user_role", "User") ?: "User"
+        set(value) = prefs.edit().putString("user_role", value).apply()
+
+    var userBalance: Double
+        get() = java.lang.Double.longBitsToDouble(prefs.getLong("user_balance", java.lang.Double.doubleToLongBits(0.0)))
+        set(value) = prefs.edit().putLong("user_balance", java.lang.Double.doubleToLongBits(value)).apply()
+
+    var userSpent: Double
+        get() = java.lang.Double.longBitsToDouble(prefs.getLong("user_spent", java.lang.Double.doubleToLongBits(0.0)))
+        set(value) = prefs.edit().putLong("user_spent", java.lang.Double.doubleToLongBits(value)).apply()
+
+    var activeLicenseKey: String?
+        get() = prefs.getString("active_license_key", null)
+        set(value) = prefs.edit().putString("active_license_key", value).apply()
 
     var rememberLogin: Boolean
         get() = prefs.getBoolean(KEY_REMEMBER, true)

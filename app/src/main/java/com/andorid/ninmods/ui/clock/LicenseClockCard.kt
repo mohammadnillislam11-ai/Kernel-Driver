@@ -41,24 +41,28 @@ fun LicenseClockCard(
     sessionManager: SessionManager,
     modifier: Modifier = Modifier
 ) {
-    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var tick by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000L)
-            currentTime = System.currentTimeMillis()
+            tick++
         }
     }
 
-    val expiryTime = sessionManager.licenseExpiryMillis
-    val diffMillis = max(0L, expiryTime - currentTime)
-    val totalSeconds = diffMillis / 1000L
+    // Server-Authoritative Live Seconds
+    val totalSeconds = if (sessionManager.serverRemainingSeconds > 0L) {
+        sessionManager.liveRemainingSeconds
+    } else {
+        val diffMillis = max(0L, sessionManager.licenseExpiryMillis - System.currentTimeMillis())
+        diffMillis / 1000L
+    }
 
     val hours = totalSeconds / 3600L
     val minutes = (totalSeconds % 3600L) / 60L
     val seconds = totalSeconds % 60L
 
-    val isExpired = diffMillis == 0L
+    val isExpired = totalSeconds == 0L
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),

@@ -17,11 +17,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -32,7 +32,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,7 +47,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.andorid.ninmods.data.ShellExecutor
+import androidx.compose.ui.unit.sp
+import com.andorid.ninmods.data.InteractiveProcessBridge
+import com.andorid.ninmods.data.ModDownloader
+import com.andorid.ninmods.data.SessionManager
+import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
+import com.andorid.ninmods.ui.dialogs.ApatchLicenseKeyDialog
+import com.andorid.ninmods.ui.dialogs.ApatchWarningDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,48 +63,162 @@ data class ExternalModItem(
     val id: String,
     val name: String,
     val fileName: String,
+    val downloadPackage: String,
     val file: File,
+    val isDownloaded: Boolean,
     val icon: ImageVector
 )
 
 @Composable
 fun ExternalModsCard(
+    sessionManager: SessionManager? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val processBridge = remember { InteractiveProcessBridge(scope) }
+    val isProcessRunning by processBridge.isRunning.collectAsState()
+    val isLicensePromptTriggered by processBridge.licensePromptTriggered.collectAsState()
+
     var mods by remember { mutableStateOf<List<ExternalModItem>>(emptyList()) }
-    var executingModId by remember { mutableStateOf<String?>(null) }
+    var activeModId by remember { mutableStateOf<String?>(null) }
+
+    // Dialog state holders
+    var downloadingMod by remember { mutableStateOf<ExternalModItem?>(null) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
+
+    var warningMod by remember { mutableStateOf<ExternalModItem?>(null) }
+
+    var showLicenseDialog by remember { mutableStateOf(false) }
+    var isSubmittingLicense by remember { mutableStateOf(false) }
+    var licenseErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Automatically trigger license pop-up dialog when stdin prompt is detected
+    LaunchedEffect(isLicensePromptTriggered) {
+        if (isLicensePromptTriggered) {
+            showLicenseDialog = true
+        }
+    }
 
     fun refreshMods() {
         scope.launch {
             mods = withContext(Dispatchers.IO) {
                 val internalDir = File(context.filesDir, "external_mods").also { if (!it.exists()) it.mkdirs() }
+
+                // 1. Core Built-In Official External Mods
+                val defaultSpecs = listOf(
+                    Triple("External Overlay ESP", "external_overlay.sh", "ext_overlay.zip"),
+                    Triple("Dynamic Offset Hook", "offset_hook.sh", "offset_hook.zip")
+                )
+
+                val defaultItems = defaultSpecs.map { (name, fileName, downloadPkg) ->
+                    val file = File(internalDir, fileName)
+                    ExternalModItem(
+                        id = "ext_${fileName}",
+                        name = name,
+                        fileName = fileName,
+                        downloadPackage = downloadPkg,
+                        file = file,
+                        isDownloaded = file.exists(),
+                        icon = resolveExternalIcon(fileName)
+                    )
+                }
+
+                // 2. Custom User Mods (from sdcard / internal)
                 val sdcardDir = try {
                     File(Environment.getExternalStorageDirectory(), "NinMods/external_mods").also {
                         if (!it.exists()) it.mkdirs()
                     }
                 } catch (_: Exception) { null }
 
-                val internalFiles = internalDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") } ?: emptyList()
-                val sdcardFiles = sdcardDir?.listFiles()?.filter { it.isFile && !it.name.startsWith(".") } ?: emptyList()
+                val customFiles = (internalDir.listFiles()?.toList() ?: emptyList()) +
+                        (sdcardDir?.listFiles()?.toList() ?: emptyList())
 
-                (internalFiles + sdcardFiles).distinctBy { it.name }.map { file ->
-                    ExternalModItem(
-                        id = "ext_${file.name}",
-                        name = formatModName(file.name),
-                        fileName = file.name,
-                        file = file,
-                        icon = resolveExternalIcon(file.name)
-                    )
-                }.sortedBy { it.name }
+                val userItems = customFiles
+                    .filter { it.isFile && !it.name.startsWith(".") && it.name.endsWith(".sh") }
+                    .filter { file -> defaultSpecs.none { it.second == file.name } }
+                    .distinctBy { it.name }
+                    .map { file ->
+                        ExternalModItem(
+                            id = "custom_ext_${file.name}",
+                            name = formatModName(file.name),
+                            fileName = file.name,
+                            downloadPackage = file.name,
+                            file = file,
+                            isDownloaded = true,
+                            icon = resolveExternalIcon(file.name)
+                        )
+                    }
+
+                defaultItems + userItems
             }
         }
     }
 
     LaunchedEffect(Unit) {
         refreshMods()
+    }
+
+    // ─── 1. APATCH ANIMATED DOWNLOAD DIALOG ───
+    downloadingMod?.let { mod ->
+        ApatchDownloadDialog(
+            modName = mod.name,
+            progress = downloadProgress,
+            onCancel = {
+                downloadingMod = null
+                downloadProgress = 0
+            }
+        )
+    }
+
+    // ─── 2. APATCH WARNING CONFIRMATION DIALOG ───
+    warningMod?.let { mod ->
+        ApatchWarningDialog(
+            modName = mod.name,
+            onDismiss = { warningMod = null },
+            onConfirmLaunch = {
+                warningMod = null
+                activeModId = mod.id
+                licenseErrorMessage = null
+                Toast.makeText(context, "Launching ${mod.name} into memory...", Toast.LENGTH_SHORT).show()
+                processBridge.start(
+                    executableFile = mod.file,
+                    onLicensePrompt = {
+                        showLicenseDialog = true
+                    }
+                )
+            }
+        )
+    }
+
+    // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG ───
+    if (showLicenseDialog) {
+        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+        ApatchLicenseKeyDialog(
+            initialKey = initialKey,
+            isSubmitting = isSubmittingLicense,
+            errorMessage = licenseErrorMessage,
+            onDismiss = {
+                showLicenseDialog = false
+                isSubmittingLicense = false
+                licenseErrorMessage = null
+            },
+            onSubmitKey = { submittedKey ->
+                isSubmittingLicense = true
+                licenseErrorMessage = null
+                scope.launch {
+                    val sent = processBridge.sendInput(submittedKey)
+                    isSubmittingLicense = false
+                    if (sent) {
+                        showLicenseDialog = false
+                        Toast.makeText(context, "License dispatched to external engine.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        licenseErrorMessage = "Failed to communicate with running background process."
+                    }
+                }
+            }
+        )
     }
 
     ElevatedCard(
@@ -118,7 +240,7 @@ fun ExternalModsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Extension,
+                    imageVector = Icons.Filled.Terminal,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
@@ -157,7 +279,7 @@ fun ExternalModsCard(
                     color = MaterialTheme.colorScheme.surface
                 ) {
                     Text(
-                        text = "No external mods installed",
+                        text = "No external mods configured",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -176,24 +298,35 @@ fun ExternalModsCard(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             rowMods.forEach { mod ->
-                                val isExecuting = executingModId == mod.id
+                                val isRunning = isProcessRunning && activeModId == mod.id
+
                                 ElevatedCard(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clickable {
-                                            scope.launch {
-                                                executingModId = mod.id
-                                                Toast.makeText(context, "Executing ${mod.name}...", Toast.LENGTH_SHORT).show()
-                                                mod.file.setExecutable(true, false)
-                                                val success = withContext(Dispatchers.IO) {
-                                                    ShellExecutor.executeRoot("sh \"${mod.file.absolutePath}\"")
+                                            if (!mod.isDownloaded) {
+                                                // Trigger APatch Animated Download Dialog
+                                                downloadingMod = mod
+                                                downloadProgress = 0
+                                                scope.launch {
+                                                    val result = ModDownloader.downloadMod(
+                                                        context = context,
+                                                        downloadUrl = mod.downloadPackage,
+                                                        targetDir = mod.file.parentFile ?: File(context.filesDir, "external_mods"),
+                                                        fileName = mod.fileName,
+                                                        onProgress = { p -> downloadProgress = p }
+                                                    )
+                                                    downloadingMod = null
+                                                    if (result.isSuccess) {
+                                                        Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
+                                                        refreshMods()
+                                                    } else {
+                                                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                                                    }
                                                 }
-                                                executingModId = null
-                                                if (success) {
-                                                    Toast.makeText(context, "${mod.name} executed successfully.", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    Toast.makeText(context, "Execution failed or root denied.", Toast.LENGTH_LONG).show()
-                                                }
+                                            } else {
+                                                // Trigger APatch Official Warning Dialog
+                                                warningMod = mod
                                             }
                                         },
                                     shape = RoundedCornerShape(16.dp),
@@ -211,7 +344,11 @@ fun ExternalModsCard(
                                     ) {
                                         Surface(
                                             shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                            color = when {
+                                                isRunning -> MaterialTheme.colorScheme.primaryContainer
+                                                !mod.isDownloaded -> MaterialTheme.colorScheme.surfaceVariant
+                                                else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                            },
                                             modifier = Modifier.size(40.dp)
                                         ) {
                                             Box(
@@ -219,9 +356,17 @@ fun ExternalModsCard(
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
-                                                    imageVector = if (isExecuting) Icons.Filled.PlayArrow else mod.icon,
+                                                    imageVector = when {
+                                                        isRunning -> Icons.Filled.PlayArrow
+                                                        !mod.isDownloaded -> Icons.Filled.CloudDownload
+                                                        else -> mod.icon
+                                                    },
                                                     contentDescription = mod.name,
-                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    tint = when {
+                                                        isRunning -> MaterialTheme.colorScheme.primary
+                                                        !mod.isDownloaded -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                        else -> MaterialTheme.colorScheme.primary
+                                                    },
                                                     modifier = Modifier.size(22.dp)
                                                 )
                                             }
@@ -239,21 +384,38 @@ fun ExternalModsCard(
                                             overflow = TextOverflow.Ellipsis
                                         )
 
-                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Spacer(modifier = Modifier.height(4.dp))
 
-                                        Text(
-                                            text = if (isExecuting) "Running..." else "Ready",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (isExecuting) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                            textAlign = TextAlign.Center
-                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = when {
+                                                isRunning -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                                !mod.isDownloaded -> MaterialTheme.colorScheme.surfaceVariant
+                                                else -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                            }
+                                        ) {
+                                            Text(
+                                                text = when {
+                                                    isRunning -> "ACTIVE"
+                                                    !mod.isDownloaded -> "DOWNLOAD"
+                                                    else -> "READY"
+                                                },
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = when {
+                                                    isRunning -> MaterialTheme.colorScheme.primary
+                                                    !mod.isDownloaded -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                    else -> MaterialTheme.colorScheme.secondary
+                                                },
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
-                            if (rowMods.size < 3) {
-                                repeat(3 - rowMods.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
+
+                            repeat(3 - rowMods.size) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -263,27 +425,19 @@ fun ExternalModsCard(
     }
 }
 
-private fun formatModName(rawName: String): String {
-    val base = rawName
-        .removeSuffix(".sh")
-        .removeSuffix(".ko.sh")
-        .removeSuffix(".apk")
-        .removeSuffix(".dex")
-        .removeSuffix(".so")
-        .replace("_", " ")
-        .replace("-", " ")
-
-    return base.split(" ").filter { it.isNotBlank() }.joinToString(" ") { word ->
-        word.lowercase().replaceFirstChar { it.uppercase() }
-    }
-}
-
 private fun resolveExternalIcon(fileName: String): ImageVector {
     val lower = fileName.lowercase()
     return when {
-        lower.contains("injector") || lower.contains("rocket") -> Icons.Filled.RocketLaunch
-        lower.contains("floating") || lower.contains("menu") || lower.contains("overlay") -> Icons.Filled.Layers
-        lower.contains("aim") || lower.contains("tune") -> Icons.Filled.Tune
-        else -> Icons.Filled.Extension
+        lower.contains("hook") || lower.contains("offset") -> Icons.Filled.Code
+        lower.contains("tune") -> Icons.Filled.Tune
+        else -> Icons.Filled.Terminal
     }
+}
+
+private fun formatModName(fileName: String): String {
+    val base = fileName.substringBeforeLast(".")
+    return base.replace("_", " ").replace("-", " ")
+        .split(" ")
+        .filter { it.isNotBlank() }
+        .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 }

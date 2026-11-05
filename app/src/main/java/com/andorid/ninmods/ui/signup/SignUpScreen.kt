@@ -60,7 +60,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SignUpScreen(
-    onSuccess: (email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit,
+    onSuccess: ((email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit)? = null,
     onNavigateToLogin: () -> Unit
 ) {
     var fullName by remember { mutableStateOf("") }
@@ -79,6 +79,7 @@ fun SignUpScreen(
         focusManager.clearFocus()
         when {
             fullName.trim().isEmpty() -> errorMessage = "Username is required"
+            !fullName.trim().matches(Regex("^[a-zA-Z0-9_]{3,30}$")) -> errorMessage = "Username must be 3-30 letters, numbers, or _"
             email.trim().isEmpty() -> errorMessage = "Email is required"
             password.length < 6 -> errorMessage = "Password must be at least 6 characters"
             password != rePassword -> errorMessage = "Passwords do not match"
@@ -139,7 +140,7 @@ fun SignUpScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Full Name Field
+        // Username Field
         TextField(
             value = fullName,
             onValueChange = {
@@ -147,8 +148,8 @@ fun SignUpScreen(
                 if (errorMessage != null) errorMessage = null
             },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Full Name") },
-            placeholder = { Text("John Doe") },
+            label = { Text("Username") },
+            placeholder = { Text("john_doe") },
             singleLine = true,
             leadingIcon = {
                 Icon(

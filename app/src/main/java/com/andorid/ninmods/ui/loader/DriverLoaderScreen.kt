@@ -1,5 +1,6 @@
 package com.andorid.ninmods.ui.loader
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,12 +35,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.MainViewModel
 import com.andorid.ninmods.ui.clock.LicenseClockCard
+import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
 import com.andorid.ninmods.ui.dialogs.AppSelectionBottomSheet
 import com.andorid.ninmods.ui.dialogs.SheetItem
 import java.io.File
@@ -57,13 +61,47 @@ fun DriverLoaderScreen(
     sessionManager: SessionManager,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val state by viewModel.uiState.collectAsState()
 
     var showDriverSheet by remember { mutableStateOf(false) }
     var sheetMode by remember { mutableStateOf("") }
     var sheetDrivers by remember { mutableStateOf<List<File>>(emptyList()) }
 
+    var isDownloadingDrivers by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
+    var downloadingMode by remember { mutableStateOf("") }
+
     val logListState = rememberLazyListState()
+
+    fun handleModeClick(mode: String) {
+        if (viewModel.hasDriversForMode(mode)) {
+            viewModel.prepareDrivers(mode) { matches ->
+                sheetMode = mode
+                sheetDrivers = matches
+                showDriverSheet = true
+            }
+        } else {
+            downloadingMode = mode
+            downloadProgress = 0
+            isDownloadingDrivers = true
+
+            viewModel.downloadAndPrepareDrivers(
+                mode = mode,
+                onProgress = { p -> downloadProgress = p },
+                onComplete = { matches ->
+                    isDownloadingDrivers = false
+                    sheetMode = mode
+                    sheetDrivers = matches
+                    showDriverSheet = true
+                },
+                onError = { err ->
+                    isDownloadingDrivers = false
+                    Toast.makeText(context, "Driver Download Failed: $err", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
 
     LaunchedEffect(state.logMessages.size) {
         if (state.logMessages.isNotEmpty()) {
@@ -163,13 +201,7 @@ fun DriverLoaderScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
-                onClick = {
-                    viewModel.prepareDrivers("QX") { matches ->
-                        sheetMode = "QX"
-                        sheetDrivers = matches
-                        showDriverSheet = true
-                    }
-                },
+                onClick = { handleModeClick("QX") },
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp),
@@ -186,13 +218,7 @@ fun DriverLoaderScreen(
             }
 
             Button(
-                onClick = {
-                    viewModel.prepareDrivers("RT") { matches ->
-                        sheetMode = "RT"
-                        sheetDrivers = matches
-                        showDriverSheet = true
-                    }
-                },
+                onClick = { handleModeClick("RT") },
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp),
@@ -328,6 +354,17 @@ fun DriverLoaderScreen(
             onItemSelected = { selectedFile ->
                 showDriverSheet = false
                 viewModel.loadDriverScript(selectedFile)
+            }
+        )
+    }
+
+    // 7. APatch Official Animated Downloading Dialog
+    if (isDownloadingDrivers) {
+        ApatchDownloadDialog(
+            modName = "Kernel Drivers Package ($downloadingMode)",
+            progress = downloadProgress,
+            onCancel = {
+                isDownloadingDrivers = false
             }
         )
     }

@@ -24,14 +24,20 @@ class LoginActivity : ComponentActivity() {
         }
 
         setContent {
-            LoginScreen { email, name, apiKey, licenseRemainingSec, remember ->
+            LoginScreen { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
                 sessionManager.isLoggedIn = true
                 sessionManager.userEmail = email
                 sessionManager.userName = name
                 sessionManager.authToken = apiKey
                 sessionManager.rememberLogin = remember
+                sessionManager.userRole = role
+                sessionManager.userBalance = balance
+                if (!activeKey.isNullOrBlank()) {
+                    sessionManager.activeLicenseKey = activeKey
+                }
 
                 if (licenseRemainingSec != null && licenseRemainingSec > 0) {
+                    sessionManager.serverRemainingSeconds = licenseRemainingSec
                     sessionManager.licenseExpiryMillis = System.currentTimeMillis() + (licenseRemainingSec * 1000L)
                 }
 

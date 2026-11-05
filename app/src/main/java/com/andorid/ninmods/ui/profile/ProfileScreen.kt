@@ -1,8 +1,12 @@
 package com.andorid.ninmods.ui.profile
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,20 +15,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -36,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,15 +55,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.network.AuthApiClient
+import com.andorid.ninmods.network.UserProfileData
 import com.andorid.ninmods.ui.clock.LicenseClockCard
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun ProfileScreen(
@@ -61,18 +78,54 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showChangePasswordDialog by remember { mutableStateOf(false) }
 
-    var currentPassword by remember { mutableStateOf("") }
+    var profileData by remember { mutableStateOf<UserProfileData?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var fetchError by remember { mutableStateOf<String?>(null) }
+
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-
-    var currentPasswordVisible by remember { mutableStateOf(false) }
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var isUpdatingPassword by remember { mutableStateOf(false) }
 
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isUpdating by remember { mutableStateOf(false) }
+    fun refreshProfile() {
+        scope.launch {
+            isLoading = true
+            fetchError = null
+            val token = sessionManager.authToken ?: ""
+            if (token.isBlank()) {
+                isLoading = false
+                fetchError = "No authorization token found. Please log in again."
+                return@launch
+            }
+
+            AuthApiClient.getProfile(token)
+                .onSuccess { data ->
+                    profileData = data
+                    sessionManager.userName = data.username
+                    sessionManager.userEmail = data.email
+                    sessionManager.userRole = data.role
+                    sessionManager.userBalance = data.balance
+                    sessionManager.userSpent = data.spent
+                    if (data.activeLicense != null) {
+                        sessionManager.serverRemainingSeconds = data.activeLicense.remainingSeconds
+                        sessionManager.activeLicenseKey = data.activeLicense.licenseKey
+                    }
+                    isLoading = false
+                }
+                .onFailure { err ->
+                    isLoading = false
+                    fetchError = err.message ?: "Failed to connect to backend server."
+                }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshProfile()
+    }
 
     Column(
         modifier = modifier
@@ -83,7 +136,7 @@ fun ProfileScreen(
     ) {
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Profile Identity Card (Borderless M3)
+        // Profile Identity Card (Server-Authoritative M3 Design)
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -98,73 +151,262 @@ fun ProfileScreen(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(72.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AccountCircle,
-                        contentDescription = "User Avatar",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                val displayName = sessionManager.userName?.takeIf { it.isNotBlank() } ?: "Authenticated User"
-                val displayEmail = sessionManager.userEmail?.takeIf { it.isNotBlank() }
-
-                Text(
-                    text = displayName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                if (displayEmail != null) {
-                    Text(
-                        text = displayEmail,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    IconButton(
+                        onClick = { refreshProfile() },
+                        modifier = Modifier.align(Alignment.TopEnd)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Verified,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Refresh Profile",
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.size(6.dp))
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(72.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AccountCircle,
+                                contentDescription = "User Avatar",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        val displayName = profileData?.username
+                            ?: sessionManager.userName?.takeIf { it.isNotBlank() }
+                            ?: "Authenticated User"
+                        val displayEmail = profileData?.email
+                            ?: sessionManager.userEmail?.takeIf { it.isNotBlank() }
+                        val displayRole = (profileData?.role ?: sessionManager.userRole).uppercase(Locale.US)
+
                         Text(
-                            text = "Verified Active Member",
+                            text = displayName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        if (!displayEmail.isNullOrBlank()) {
+                            Text(
+                                text = displayEmail,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Verified Role Chip
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Shield,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = displayRole,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            // Active Status Chip
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFF81C784).copy(alpha = 0.18f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Verified,
+                                        contentDescription = null,
+                                        tint = Color(0xFF81C784),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "ACTIVE",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF81C784)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (isLoading) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp)
+                }
+
+                if (fetchError != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = fetchError ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+
+        // Server Billing / Wallet Card (USD Server Authoritative)
+        Text(
+            text = "WALLET & BILLING (SERVER-AUTHORITATIVE)",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Account Balance",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val bal = profileData?.balance ?: sessionManager.userBalance
+                        Text(
+                            text = String.format(Locale.US, "$%.2f USD", bal),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Total Spent",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val spnt = profileData?.spent ?: sessionManager.userSpent
+                        Text(
+                            text = String.format(Locale.US, "$%.2f USD", spnt),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
             }
         }
 
-        // License Expiry Digital Clock Card
+        // License Expiration Digital Monotonic Clock Card
         LicenseClockCard(sessionManager = sessionManager)
 
-        // Account Details Card
+        // Server Active License Details Card
+        val activeLic = profileData?.activeLicense
+        if (activeLic != null || !sessionManager.activeLicenseKey.isNullOrBlank()) {
+            val keyString = activeLic?.licenseKey ?: sessionManager.activeLicenseKey ?: "N/A"
+            val durationLabel = activeLic?.durationType ?: "Activated Plan"
+
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Key,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Active License: $durationLabel",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = keyString,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("License Key", keyString)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "License key copied!", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ContentCopy,
+                                contentDescription = "Copy License Key",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Account Actions Card
         Text(
             text = "ACCOUNT ACTIONS",
             style = MaterialTheme.typography.labelMedium,
@@ -182,42 +424,12 @@ fun ProfileScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column {
-                // Session Status Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Key,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.size(16.dp))
-                    Column {
-                        Text(
-                            text = "Session: Authorized",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Token: ${sessionManager.authToken ?: "Active"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
                 // Change Password Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            errorMessage = null
-                            currentPassword = ""
+                            passwordError = null
                             newPassword = ""
                             confirmPassword = ""
                             showChangePasswordDialog = true
@@ -240,7 +452,7 @@ fun ProfileScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Update your account access password",
+                            text = "Update your account password on the server",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -256,7 +468,7 @@ fun ProfileScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ExitToApp,
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(24.dp)
@@ -275,10 +487,12 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // Change Password Dialog
+    // Change Password Dialog (Direct Backend API Integration)
     if (showChangePasswordDialog) {
         AlertDialog(
-            onDismissRequest = { showChangePasswordDialog = false },
+            onDismissRequest = {
+                if (!isUpdatingPassword) showChangePasswordDialog = false
+            },
             title = {
                 Text(
                     text = "Change Password",
@@ -291,31 +505,19 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (!sessionManager.userPassword.isNullOrBlank()) {
-                        OutlinedTextField(
-                            value = currentPassword,
-                            onValueChange = { currentPassword = it; errorMessage = null },
-                            label = { Text("Current Password") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = if (currentPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { currentPasswordVisible = !currentPasswordVisible }) {
-                                    Icon(
-                                        imageVector = if (currentPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                        contentDescription = null
-                                    )
-                                }
-                            }
-                        )
-                    }
+                    Text(
+                        text = "Enter a new secure password for your account.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
                     OutlinedTextField(
                         value = newPassword,
-                        onValueChange = { newPassword = it; errorMessage = null },
+                        onValueChange = { newPassword = it; passwordError = null },
                         label = { Text("New Password") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
@@ -329,10 +531,11 @@ fun ProfileScreen(
 
                     OutlinedTextField(
                         value = confirmPassword,
-                        onValueChange = { confirmPassword = it; errorMessage = null },
+                        onValueChange = { confirmPassword = it; passwordError = null },
                         label = { Text("Confirm New Password") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
@@ -344,9 +547,9 @@ fun ProfileScreen(
                         }
                     )
 
-                    if (errorMessage != null) {
+                    if (passwordError != null) {
                         Text(
-                            text = errorMessage ?: "",
+                            text = passwordError ?: "",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -356,51 +559,45 @@ fun ProfileScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val savedPassword = sessionManager.userPassword
-                        if (!savedPassword.isNullOrBlank() && currentPassword != savedPassword) {
-                            errorMessage = "Current password does not match"
+                        if (newPassword.isBlank()) {
+                            passwordError = "New password cannot be empty"
                             return@Button
                         }
                         if (newPassword.length < 6) {
-                            errorMessage = "New password must be at least 6 characters"
+                            passwordError = "Password must be at least 6 characters"
                             return@Button
                         }
                         if (newPassword != confirmPassword) {
-                            errorMessage = "New passwords do not match"
+                            passwordError = "Passwords do not match"
                             return@Button
                         }
 
+                        isUpdatingPassword = true
+                        passwordError = null
                         val token = sessionManager.authToken ?: ""
-                        if (token.isBlank()) {
-                            // Offline/local session update
-                            sessionManager.changePassword(newPassword)
-                            Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_SHORT).show()
-                            showChangePasswordDialog = false
-                            return@Button
-                        }
 
-                        isUpdating = true
-                        errorMessage = null
                         scope.launch {
-                            val result = AuthApiClient.updatePassword(token, newPassword)
-                            isUpdating = false
-                            if (result.isSuccess) {
-                                sessionManager.changePassword(newPassword)
-                                Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_SHORT).show()
-                                showChangePasswordDialog = false
-                            } else {
-                                errorMessage = result.exceptionOrNull()?.message ?: "Failed to update password"
-                            }
+                            AuthApiClient.updatePassword(token, newPassword)
+                                .onSuccess {
+                                    isUpdatingPassword = false
+                                    showChangePasswordDialog = false
+                                    sessionManager.userPassword = newPassword
+                                    Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_LONG).show()
+                                }
+                                .onFailure { e ->
+                                    isUpdatingPassword = false
+                                    passwordError = e.message ?: "Failed to update password."
+                                }
                         }
                     },
-                    enabled = !isUpdating,
-                    shape = RoundedCornerShape(20.dp)
+                    enabled = !isUpdatingPassword,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    if (isUpdating) {
+                    if (isUpdatingPassword) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
                         Text("Save")
@@ -408,12 +605,13 @@ fun ProfileScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showChangePasswordDialog = false }) {
+                TextButton(
+                    onClick = { showChangePasswordDialog = false },
+                    enabled = !isUpdatingPassword
+                ) {
                     Text("Cancel")
                 }
-            },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = MaterialTheme.colorScheme.surface
+            }
         )
     }
 }

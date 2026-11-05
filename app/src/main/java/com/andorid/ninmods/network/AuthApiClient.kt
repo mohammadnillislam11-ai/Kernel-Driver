@@ -19,6 +19,37 @@ data class ActiveLicenseInfo(
     val devicesUsed: Int
 )
 
+data class UserProfileData(
+    val id: Int,
+    val username: String,
+    val email: String,
+    val role: String,
+    val balance: Double,
+    val spent: Double,
+    val currency: String,
+    val status: String,
+    val apiKey: String,
+    val createdAt: String,
+    val activeLicense: ActiveLicenseInfo?,
+    val totalKeys: Int = 0,
+    val activeKeys: Int = 0
+)
+
+data class AppVersionData(
+    val versionName: String,
+    val versionCode: Int,
+    val downloadUrl: String,
+    val changelog: String,
+    val isForceUpdate: Boolean
+)
+
+data class AppConfigData(
+    val maintenanceMode: Boolean,
+    val maintenanceMessage: String,
+    val brandName: String,
+    val telegramSupport: String
+)
+
 data class LoginResponse(
     val success: Boolean,
     val message: String,
@@ -26,6 +57,8 @@ data class LoginResponse(
     val username: String,
     val email: String,
     val role: String,
+    val balance: Double = 0.0,
+    val currency: String = "USD",
     val apiKey: String,
     val sessionToken: String,
     val activeLicense: ActiveLicenseInfo? = null
@@ -67,7 +100,7 @@ object AuthApiClient {
             }
 
             val (code, responseBody) = sendPostRequest(AppConfig.LOGIN_URL, payload.toString())
-            val json = JSONObject(responseBody)
+            val json = parseJsonResponse(responseBody, code)
 
             if (code in 200..299 && (json.optBoolean("success", false) || json.optBoolean("status", false))) {
                 val activeLicJson = json.optJSONObject("active_license")
@@ -89,6 +122,8 @@ object AuthApiClient {
                     username = json.optString("username", usernameOrEmail),
                     email = json.optString("email", ""),
                     role = json.optString("role", "user"),
+                    balance = json.optDouble("balance", 0.0),
+                    currency = json.optString("currency", "USD"),
                     apiKey = json.optString("api_key", ""),
                     sessionToken = json.optString("session_token", ""),
                     activeLicense = activeLic
@@ -127,7 +162,7 @@ object AuthApiClient {
             }
 
             val (code, responseBody) = sendPostRequest(AppConfig.SIGNUP_URL, payload.toString())
-            val json = JSONObject(responseBody)
+            val json = parseJsonResponse(responseBody, code)
 
             if (code in 200..299 && (json.optBoolean("success", false) || json.optBoolean("status", false))) {
                 val result = SignUpResponse(
@@ -170,7 +205,7 @@ object AuthApiClient {
             }
 
             val (code, responseBody) = sendPostRequest(AppConfig.RESET_PASSWORD_URL, payload.toString())
-            val json = JSONObject(responseBody)
+            val json = parseJsonResponse(responseBody, code)
 
             if (code in 200..299 && (json.optBoolean("success", false) || json.optBoolean("status", false))) {
                 val msg = json.optString("message", "Password reset successful!")
@@ -202,7 +237,7 @@ object AuthApiClient {
             )
 
             val (code, responseBody) = sendPostRequest(AppConfig.PROFILE_UPDATE_URL, payload.toString(), headers)
-            val json = JSONObject(responseBody)
+            val json = parseJsonResponse(responseBody, code)
 
             if (code in 200..299 && (json.optBoolean("success", false) || json.optBoolean("status", false))) {
                 val msg = json.optString("message", "Password updated successfully!")
@@ -212,7 +247,251 @@ object AuthApiClient {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "Profile update network error"))
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * GET /api/v2/profile (Fetch server-authoritative profile data)
+     */
+    suspend fun getProfile(apiKey: String): Result<UserProfileData> = withContext(Dispatchers.IO) {
+        try {
+            val headers = mapOf(
+                "Authorization" to "Bearer ${apiKey.trim()}",
+                "api-key" to apiKey.trim()
+            )
+
+            val (code, responseBody) = sendGetRequest(AppConfig.PROFILE_URL, headers)
+            val json = parseJsonResponse(responseBody, code)
+
+            if (code in 200..299 && (json.optBoolean("success", false) || json.has("profile"))) {
+                val prof = json.optJSONObject("profile") ?: json
+                val activeLicJson = prof.optJSONObject("active_license")
+                val activeLic = if (activeLicJson != null) {
+                    ActiveLicenseInfo(
+                        licenseKey = activeLicJson.optString("license_key", ""),
+                        durationType = activeLicJson.optString("duration_type", "Standard"),
+                        expiresAt = activeLicJson.optString("expires_at", ""),
+                        remainingSeconds = activeLicJson.optLong("remaining_seconds", 0L),
+                        maxDevices = activeLicJson.optInt("max_devices", 1),
+                        devicesUsed = activeLicJson.optInt("devices_used", 1)
+                    )
+                } else null
+
+                val statsJson = prof.optJSONObject("license_stats")
+
+                val data = UserProfileData(
+                    id = prof.optInt("id", 0),
+                    username = prof.optString("username", "User"),
+                    email = prof.optString("email", ""),
+                    role = prof.optString("role", "user"),
+                    balance = prof.optDouble("balance", 0.0),
+                    spent = prof.optDouble("spent", 0.0),
+                    currency = prof.optString("currency", "USD"),
+                    status = prof.optString("status", "active"),
+                    apiKey = prof.optString("api_key", apiKey),
+                    createdAt = prof.optString("created_at", ""),
+                    activeLicense = activeLic,
+                    totalKeys = statsJson?.optInt("total_keys", 0) ?: 0,
+                    activeKeys = statsJson?.optInt("active_keys", 0) ?: 0
+                )
+                Result.success(data)
+            } else {
+                val errorMsg = json.optString("error", json.optString("message", "Failed to fetch profile (HTTP $code)"))
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * GET /api/v2/app/version (Check for official software updates)
+     */
+    suspend fun checkAppVersion(appType: String = "loader"): Result<AppVersionData> = withContext(Dispatchers.IO) {
+        try {
+            val url = "${AppConfig.APP_VERSION_URL}?app_type=$appType"
+            val (code, responseBody) = sendGetRequest(url)
+            val json = parseJsonResponse(responseBody, code)
+            if (code in 200..299 && (json.optBoolean("success", false) || json.has("version_name"))) {
+                val data = AppVersionData(
+                    versionName = json.optString("version_name", "1.2.6"),
+                    versionCode = json.optInt("version_code", 126),
+                    downloadUrl = json.optString("download_url", ""),
+                    changelog = json.optString("changelog", ""),
+                    isForceUpdate = json.optBoolean("is_force_update", false)
+                )
+                Result.success(data)
+            } else {
+                Result.failure(Exception(json.optString("error", "Version check failed")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * POST /api/v2/app/heartbeat (Sync license timer with server in real time)
+     */
+    suspend fun sendHeartbeat(
+        licenseKey: String,
+        hwid: String,
+        sessionToken: String = ""
+    ): Result<Long> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("license_key", licenseKey.trim())
+                put("hwid", hwid.trim())
+                if (sessionToken.isNotBlank()) put("session_token", sessionToken.trim())
+            }
+            val (code, responseBody) = sendPostRequest(AppConfig.APP_HEARTBEAT_URL, payload.toString())
+            val json = parseJsonResponse(responseBody, code)
+            if (code in 200..299 && (json.optBoolean("success", false) || json.optString("status") == "active")) {
+                val remSec = json.optLong("remaining_seconds", 0L)
+                Result.success(remSec)
+            } else {
+                val err = json.optString("message", json.optString("error", "Heartbeat failed"))
+                Result.failure(Exception(err))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * GET /api/v2/app/config (Check maintenance mode and server announcements)
+     */
+    suspend fun fetchAppConfig(): Result<AppConfigData> = withContext(Dispatchers.IO) {
+        try {
+            val (code, responseBody) = sendGetRequest("${AppConfig.API_BASE_URL}/app/config")
+            val json = parseJsonResponse(responseBody, code)
+            if (code in 200..299 && json.optBoolean("success", false)) {
+                val brand = json.optJSONObject("brand")
+                val config = AppConfigData(
+                    maintenanceMode = json.optBoolean("maintenance_mode", false),
+                    maintenanceMessage = json.optString("maintenance_message", ""),
+                    brandName = brand?.optString("name", "NINMODS") ?: "NINMODS",
+                    telegramSupport = brand?.optString("telegram_support", "https://t.me/ninmods") ?: "https://t.me/ninmods"
+                )
+                Result.success(config)
+            } else {
+                Result.failure(Exception(json.optString("error", "Failed to retrieve configuration")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * POST /api/v2/app/bug-report (Send crash diagnostics to systems engineering)
+     */
+    suspend fun submitBugReport(
+        licenseKey: String,
+        hwid: String,
+        deviceModel: String,
+        kernelVersion: String,
+        logcatTrace: String,
+        description: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("license_key", licenseKey.trim())
+                put("hwid", hwid.trim())
+                put("device_model", deviceModel.trim())
+                put("android_version", android.os.Build.VERSION.RELEASE)
+                put("kernel_version", kernelVersion.trim())
+                put("logcat_trace", logcatTrace)
+                put("description", description.trim())
+            }
+            val (code, responseBody) = sendPostRequest("${AppConfig.API_BASE_URL}/app/bug-report", payload.toString())
+            val json = parseJsonResponse(responseBody, code)
+            if (code in 200..299 && json.optBoolean("success", false)) {
+                val msg = json.optString("message", "Bug report received successfully.")
+                Result.success(msg)
+            } else {
+                Result.failure(Exception(json.optString("error", "Bug report submission failed")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * POST /api/v2/app/activate (Direct server-side license verification)
+     */
+    suspend fun verifyLicense(
+        licenseKey: String,
+        hwid: String
+    ): Result<ActiveLicenseInfo> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("license_key", licenseKey.trim())
+                put("hwid", hwid.trim())
+            }
+            val (code, responseBody) = sendPostRequest(AppConfig.APP_ACTIVATE_URL, payload.toString())
+            val json = parseJsonResponse(responseBody, code)
+
+            if (code in 200..299 && (json.optBoolean("success", false) || json.optBoolean("status", false))) {
+                val data = json.optJSONObject("data") ?: json
+                val info = ActiveLicenseInfo(
+                    licenseKey = data.optString("license_key", licenseKey),
+                    durationType = data.optString("duration_type", "standard"),
+                    expiresAt = data.optString("expires_at", ""),
+                    remainingSeconds = data.optLong("remaining_seconds", 0L),
+                    maxDevices = data.optInt("max_devices", 1),
+                    devicesUsed = data.optInt("devices_used", 1)
+                )
+                Result.success(info)
+            } else {
+                val err = json.optString("error", json.optString("message", "License validation failed"))
+                Result.failure(Exception(err))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(sanitizeNetworkException(e)))
+        }
+    }
+
+    /**
+     * Parse server response body into JSON, stripping any Cloudflare / Nginx / Apache HTML error pages.
+     * Prevents raw HTML tags from ever leaking onto the UI.
+     */
+    fun parseJsonResponse(body: String, statusCode: Int): JSONObject {
+        val trimmed = body.trim()
+        if (trimmed.startsWith("<") || trimmed.contains("<!DOCTYPE", ignoreCase = true) || trimmed.contains("<html", ignoreCase = true)) {
+            val friendlyMsg = when (statusCode) {
+                502, 503, 504 -> "Server is temporarily offline for maintenance. Please try again shortly."
+                500 -> "Server encountered an internal error. Please try again later."
+                403 -> "Server access denied by security gateway."
+                404 -> "Requested endpoint was not found on server."
+                else -> "Server returned an invalid HTML response (HTTP $statusCode)."
+            }
+            return JSONObject().apply {
+                put("success", false)
+                put("status", false)
+                put("error", friendlyMsg)
+            }
+        }
+        return try {
+            JSONObject(trimmed)
+        } catch (_: Exception) {
+            JSONObject().apply {
+                put("success", false)
+                put("status", false)
+                put("error", "Unexpected server response format.")
+            }
+        }
+    }
+
+    fun sanitizeNetworkException(e: Exception): String {
+        val msg = e.message ?: ""
+        return when {
+            msg.contains("Unable to resolve host", ignoreCase = true) ->
+                "Cannot resolve server domain. Check your internet connection."
+            msg.contains("failed to connect", ignoreCase = true) || msg.contains("Connection refused", ignoreCase = true) ->
+                "Could not connect to backend server. Server may be offline."
+            msg.contains("timed out", ignoreCase = true) || msg.contains("SocketTimeout", ignoreCase = true) ->
+                "Server connection timed out. Please try again."
+            else -> msg.ifBlank { "Network communication error occurred." }
         }
     }
 
@@ -238,6 +517,37 @@ object AuthApiClient {
         OutputStreamWriter(conn.outputStream, "UTF-8").use { writer ->
             writer.write(jsonBody)
             writer.flush()
+        }
+
+        val code = conn.responseCode
+        val inputStream = if (code in 200..299) conn.inputStream else conn.errorStream
+
+        val responseBody = if (inputStream != null) {
+            BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
+                reader.readText()
+            }
+        } else {
+            "{}"
+        }
+
+        conn.disconnect()
+        return Pair(code, responseBody)
+    }
+
+    private fun sendGetRequest(
+        urlString: String,
+        extraHeaders: Map<String, String> = emptyMap()
+    ): Pair<Int, String> {
+        val url = URL(urlString)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.connectTimeout = AppConfig.TIMEOUT_MILLIS
+        conn.readTimeout = AppConfig.TIMEOUT_MILLIS
+        conn.doInput = true
+        conn.setRequestProperty("Accept", "application/json")
+
+        for ((k, v) in extraHeaders) {
+            conn.setRequestProperty(k, v)
         }
 
         val code = conn.responseCode

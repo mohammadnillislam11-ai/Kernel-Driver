@@ -9,8 +9,18 @@ import java.util.zip.ZipInputStream
 
 class DriverRepository(private val context: Context) {
 
-    private val driversDir: File
+    val driversDir: File
         get() = File(context.filesDir, "drivers").also { if (!it.exists()) it.mkdirs() }
+
+    /**
+     * Checks if driver scripts are available locally for the given mode (QX or RT).
+     */
+    fun hasDriversForMode(mode: String): Boolean {
+        val targetFolder = File(driversDir, mode)
+        if (!targetFolder.exists()) return false
+        val files = targetFolder.listFiles() ?: return false
+        return files.any { f -> f.isFile && (f.name.endsWith(".sh") || f.name.endsWith(".ko.sh")) }
+    }
 
     /**
      * Extracts Kernel_Drivers.zip from assets to app private storage.
@@ -37,6 +47,41 @@ class DriverRepository(private val context: Context) {
         } catch (e: Exception) {
             onProgress("Extraction failed: ${e.message}")
             false
+        }
+    }
+
+    /**
+     * Downloads Kernel_Drivers.zip from the backend server (/downloads/Kernel_Drivers.zip)
+     * and extracts it into driversDir.
+     */
+    suspend fun downloadDriversFromServer(onProgress: (Int) -> Unit = {}): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val result = ModDownloader.downloadMod(
+                context = context,
+                downloadUrl = "Kernel_Drivers.zip",
+                targetDir = driversDir,
+                fileName = "Kernel_Drivers.zip",
+                onProgress = onProgress
+            )
+
+            if (result.isSuccess) {
+                // Ensure executable permissions on all extracted scripts
+                try {
+                    driversDir.walkTopDown().forEach { file ->
+                        if (file.isFile && (file.name.endsWith(".sh") || file.name.endsWith(".ko.sh"))) {
+                            file.setExecutable(true, false)
+                            file.setReadable(true, false)
+                        }
+                    }
+                    ShellExecutor.executeRoot("chmod -R 755 '${driversDir.absolutePath}'")
+                } catch (_: Exception) {}
+
+                Result.success(true)
+            } else {
+                Result.failure(result.exceptionOrNull() ?: Exception("Driver download failed."))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

@@ -34,10 +34,10 @@ fun DashboardScreen(
         LicenseClockCard(sessionManager = sessionManager)
 
         // 2. KERNEL MODS Card (Composed from ui/dashboard/kernel_mods)
-        KernelModsCard()
+        KernelModsCard(sessionManager = sessionManager)
 
         // 3. EXTERNAL MODS Card (Composed from ui/dashboard/external_mods)
-        ExternalModsCard()
+        ExternalModsCard(sessionManager = sessionManager)
 
         Spacer(modifier = Modifier.height(20.dp))
     }

@@ -25,21 +25,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +66,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.data.ShellExecutor
+import com.andorid.ninmods.network.AuthApiClient
 import com.andorid.ninmods.ui.component.SwitchItem
 import com.andorid.ninmods.ui.dialogs.AppSelectionBottomSheet
 import com.andorid.ninmods.ui.dialogs.SheetItem
@@ -89,6 +94,35 @@ fun SettingsScreen(
     var globalNamespace by remember { mutableStateOf(true) }
     var legacySu by remember { mutableStateOf(false) }
     var showRebootSheet by remember { mutableStateOf(false) }
+
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateStatusText by remember { mutableStateOf("Tap to check latest release") }
+    var isNewUpdateAvailable by remember { mutableStateOf(false) }
+    var latestDownloadUrl by remember { mutableStateOf("") }
+
+    fun checkForUpdates() {
+        isCheckingUpdate = true
+        updateStatusText = "Connecting to server..."
+        scope.launch {
+            AuthApiClient.checkAppVersion("loader")
+                .onSuccess { ver ->
+                    isCheckingUpdate = false
+                    val currentVersionCode = 126
+                    if (ver.versionCode > currentVersionCode) {
+                        isNewUpdateAvailable = true
+                        latestDownloadUrl = ver.downloadUrl
+                        updateStatusText = "New release available: ${ver.versionName}"
+                    } else {
+                        isNewUpdateAvailable = false
+                        updateStatusText = "Up to date (${ver.versionName})"
+                    }
+                }
+                .onFailure {
+                    isCheckingUpdate = false
+                    updateStatusText = "Running official build v1.2.6"
+                }
+        }
+    }
 
     fun checkStorage(ctx: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -522,7 +556,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ExitToApp,
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(24.dp)
@@ -585,6 +619,75 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+            }
+        }
+
+        // SOFTWARE UPDATES
+        Text(
+            text = "SOFTWARE UPDATES",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.SystemUpdate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.size(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "DriverLoader v1.2.6",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = updateStatusText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isNewUpdateAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (isCheckingUpdate) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else if (isNewUpdateAvailable && latestDownloadUrl.isNotBlank()) {
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(latestDownloadUrl))
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Update")
+                    }
+                } else {
+                    IconButton(onClick = { checkForUpdates() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Check for Updates",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

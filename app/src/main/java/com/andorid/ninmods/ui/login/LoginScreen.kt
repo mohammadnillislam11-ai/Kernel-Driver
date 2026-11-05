@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -71,7 +72,16 @@ enum class AuthScreenState {
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit
+    onLoginSuccess: (
+        email: String,
+        name: String,
+        apiKey: String,
+        licenseRemainingSec: Long?,
+        role: String,
+        balance: Double,
+        activeKey: String?,
+        remember: Boolean
+    ) -> Unit
 ) {
     var authState by remember { mutableStateOf(AuthScreenState.LOGIN) }
 
@@ -101,9 +111,6 @@ fun LoginScreen(
                     }
                     AuthScreenState.SIGNUP -> {
                         SignUpScreen(
-                            onSuccess = { email, name, apiKey, licenseRemainingSec, remember ->
-                                onLoginSuccess(email, name, apiKey, licenseRemainingSec, remember)
-                            },
                             onNavigateToLogin = { authState = AuthScreenState.LOGIN }
                         )
                     }
@@ -120,7 +127,16 @@ fun LoginScreen(
 
 @Composable
 private fun LoginContent(
-    onSuccess: (email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit,
+    onSuccess: (
+        email: String,
+        name: String,
+        apiKey: String,
+        licenseRemainingSec: Long?,
+        role: String,
+        balance: Double,
+        activeKey: String?,
+        remember: Boolean
+    ) -> Unit,
     onNavigateToSignUp: () -> Unit,
     onNavigateToForgotPassword: () -> Unit
 ) {
@@ -130,6 +146,7 @@ private fun LoginContent(
     var rememberMe by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
 
@@ -141,7 +158,8 @@ private fun LoginContent(
             isLoading = true
             errorMessage = null
             scope.launch {
-                val result = AuthApiClient.login(email.trim(), password.trim())
+                val hwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                val result = AuthApiClient.login(email.trim(), password.trim(), hwid)
                 isLoading = false
                 if (result.isSuccess) {
                     val auth = result.getOrThrow()
@@ -150,6 +168,9 @@ private fun LoginContent(
                         auth.username.ifBlank { email.substringBefore("@") },
                         auth.apiKey,
                         auth.activeLicense?.remainingSeconds,
+                        auth.role,
+                        auth.balance,
+                        auth.activeLicense?.licenseKey,
                         rememberMe
                     )
                 } else {

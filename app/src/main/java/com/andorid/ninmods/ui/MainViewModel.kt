@@ -90,6 +90,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun hasDriversForMode(mode: String): Boolean {
+        return repository.hasDriversForMode(mode)
+    }
+
     fun prepareDrivers(mode: String, onSelectionRequired: (List<File>) -> Unit) {
         viewModelScope.launch {
             val kernel = _uiState.value.kernelRelease
@@ -97,6 +101,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val matches = repository.findMatchingDrivers(kernel, mode)
             appendLog("[SELECT] ${matches.size} drivers found. Presenting selection dialog.")
             onSelectionRequired(matches)
+        }
+    }
+
+    fun downloadAndPrepareDrivers(
+        mode: String,
+        onProgress: (Int) -> Unit,
+        onComplete: (List<File>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isWorking = true)
+            appendLog("────────────────────────────────────────")
+            appendLog("[DOWNLOAD] Drivers for $mode mode missing on device. Connecting to backend...")
+
+            val downloadResult = repository.downloadDriversFromServer { progress ->
+                onProgress(progress)
+            }
+
+            if (downloadResult.isSuccess) {
+                appendLog("[SUCCESS] Kernel drivers package downloaded and unpacked.")
+                val kernel = _uiState.value.kernelRelease
+                val matches = repository.findMatchingDrivers(kernel, mode)
+                appendLog("[SELECT] ${matches.size} drivers located for $mode mode.")
+                _uiState.value = _uiState.value.copy(isWorking = false)
+                onComplete(matches)
+            } else {
+                val errorMsg = downloadResult.exceptionOrNull()?.message ?: "Driver download failed."
+                appendLog("[ERROR] Failed to download drivers: $errorMsg")
+                _uiState.value = _uiState.value.copy(isWorking = false)
+                onError(errorMsg)
+            }
         }
     }
 
