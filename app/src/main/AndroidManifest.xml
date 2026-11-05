@@ -12,8 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DriverLoader">
 
+        <!-- Initial Official Authentication Gateway -->
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.login.LoginActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>
@@ -21,6 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Main Dashboard & Driver Loader Workspace -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
     </application>
 

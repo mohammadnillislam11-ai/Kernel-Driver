@@ -140,6 +140,8 @@
                 android:text="@string/btn_load_qx"
                 android:textColor="@color/apatch_on_primary"
                 android:textStyle="bold"
+                app:icon="@drawable/play_circle"
+                app:iconTint="@color/apatch_on_primary"
                 app:backgroundTint="@color/apatch_primary"
                 app:cornerRadius="16dp" />
 
@@ -155,6 +157,8 @@
                 android:text="@string/btn_load_rt"
                 android:textColor="@color/apatch_text_primary"
                 android:textStyle="bold"
+                app:icon="@drawable/device_mobile_down"
+                app:iconTint="@color/apatch_text_primary"
                 app:backgroundTint="@color/apatch_surface_variant"
                 app:cornerRadius="16dp" />
         </LinearLayout>
@@ -168,6 +172,8 @@
             android:text="@string/btn_unload"
             android:textColor="@color/apatch_error"
             app:strokeColor="@color/apatch_error"
+            app:icon="@drawable/trash"
+            app:iconTint="@color/apatch_error"
             app:cornerRadius="14dp" />
 
         <!-- Real-Time Console Card (APatch Embedded Terminal) -->
