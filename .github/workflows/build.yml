@@ -40,7 +40,7 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace
+          ./gradlew clean assembleRelease --stacktrace > build.log 2>&1 || (tail -n 150 build.log && exit 1)
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
