@@ -17,49 +17,60 @@ object ShellExecutor {
     }
 
     /**
-     * Executes commands in a root 'su' shell session.
-     * Streams stdout and stderr line-by-line without artificial timeout.
+     * Executes commands in a genuine root 'su' shell session.
+     * Streams stdout and stderr line-by-line in real time.
      */
     fun executeRootCommand(commands: List<String>): Flow<ShellOutput> = flow {
         var process: Process? = null
         try {
-            process = Runtime.getRuntime().exec("su")
+            process = ProcessBuilder("su")
+                .redirectErrorStream(false)
+                .start()
+
             val outputStream = DataOutputStream(process.outputStream)
+            for (cmd in commands) {
+                outputStream.write((cmd + "\n").toByteArray(Charsets.UTF_8))
+            }
+            outputStream.write("exit $?\n".toByteArray(Charsets.UTF_8))
+            outputStream.flush()
+
             val inputStream = BufferedReader(InputStreamReader(process.inputStream))
             val errorStream = BufferedReader(InputStreamReader(process.errorStream))
 
-            for (cmd in commands) {
-                outputStream.writeBytes("$cmd\n")
-            }
-            outputStream.writeBytes("echo \"__EXIT_CODE__=$?\"\n")
-            outputStream.writeBytes("exit\n")
-            outputStream.flush()
-
-            var exitCode = -1
             var line: String?
-
-            // Read standard output
             while (inputStream.readLine().also { line = it } != null) {
-                val l = line!!
-                if (l.startsWith("__EXIT_CODE__=")) {
-                    exitCode = l.substringAfter("__EXIT_CODE__=").trim().toIntOrNull() ?: 0
-                } else {
-                    emit(ShellOutput.Line(l))
-                }
+                emit(ShellOutput.Line(line!!))
             }
 
-            // Read error output
             while (errorStream.readLine().also { line = it } != null) {
                 emit(ShellOutput.Line("[STDERR] ${line!!}"))
             }
 
-            val procExit = process.waitFor()
-            if (exitCode == -1) exitCode = procExit
-
+            val exitCode = process.waitFor()
             emit(ShellOutput.Complete(exitCode = exitCode, success = exitCode == 0))
 
         } catch (e: Exception) {
-            emit(ShellOutput.Error("Execution failed: ${e.message}"))
+            // Attempt fallback through /system/bin/su or /data/adb/ap/bin/su if generic 'su' isn't in default PATH
+            try {
+                val suBin = listOf(
+                    "/system/bin/su",
+                    "/system/xbin/su",
+                    "/data/adb/ap/bin/su",
+                    "/data/adb/magisk/su"
+                ).firstOrNull { java.io.File(it).exists() } ?: "su"
+
+                val joinedCmd = commands.joinToString(" && ")
+                val fbProc = ProcessBuilder(suBin, "-c", joinedCmd).start()
+                val reader = BufferedReader(InputStreamReader(fbProc.inputStream))
+                var fbLine: String?
+                while (reader.readLine().also { fbLine = it } != null) {
+                    emit(ShellOutput.Line(fbLine!!))
+                }
+                val code = fbProc.waitFor()
+                emit(ShellOutput.Complete(exitCode = code, success = code == 0))
+            } catch (fe: Exception) {
+                emit(ShellOutput.Error("Root execution error: ${e.message}"))
+            }
         } finally {
             process?.destroy()
         }

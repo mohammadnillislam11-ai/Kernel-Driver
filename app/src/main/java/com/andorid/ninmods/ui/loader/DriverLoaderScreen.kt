@@ -89,7 +89,9 @@ fun DriverLoaderScreen(
         ) {
             // Card 1: Kernel Driver (Left)
             ElevatedCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { viewModel.refreshStatus() },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -121,7 +123,9 @@ fun DriverLoaderScreen(
 
             // Card 2: SuperUser (Right)
             ElevatedCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { viewModel.requestRootAndCheck() },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant

@@ -1,23 +1,33 @@
 package com.andorid.ninmods.util
 
+import android.system.Os
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
 object KernelDetector {
 
     /**
-     * Dual-strategy kernel detection:
-     * 1. System property 'os.version' (instant, pure Android/Bionic runtime)
-     * 2. 'uname -r' shell execution fallback
+     * APatch-identical kernel release detection:
+     * 1. POSIX uname syscall via Os.uname().release
+     * 2. System property 'os.version'
+     * 3. 'uname -r' shell execution fallback
      */
     fun detectKernelRelease(): String {
-        // Strategy 1: System property
+        // Strategy 1: APatch official POSIX uname release
+        try {
+            val osRelease = Os.uname().release
+            if (!osRelease.isNullOrBlank()) {
+                return osRelease.trim()
+            }
+        } catch (_: Throwable) {}
+
+        // Strategy 2: System property os.version
         val propVersion = System.getProperty("os.version")?.trim()
         if (!propVersion.isNullOrEmpty() && propVersion != "unknown") {
             return propVersion
         }
 
-        // Strategy 2: Process execution uname -r
+        // Strategy 3: Process execution uname -r
         try {
             val process = Runtime.getRuntime().exec("uname -r")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
@@ -27,9 +37,8 @@ object KernelDetector {
             if (!line.isNullOrEmpty()) {
                 return line
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
 
-        // Fallback
         return "4.19.157"
     }
 

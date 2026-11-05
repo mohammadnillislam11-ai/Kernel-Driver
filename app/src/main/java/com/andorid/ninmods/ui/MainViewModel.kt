@@ -53,6 +53,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         checkRootAndExtract()
     }
 
+    fun requestRootAndCheck() {
+        checkRootAndExtract()
+    }
+
     private fun checkRootAndExtract() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isWorking = true)

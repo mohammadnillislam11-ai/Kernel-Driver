@@ -19,6 +19,22 @@ object DeviceNodeManager {
                 found.add(path)
             }
         }
+
+        // If direct file access was constrained by SELinux, inspect loaded kernel modules
+        if (found.isEmpty()) {
+            try {
+                val procModules = File("/proc/modules")
+                if (procModules.exists() && procModules.canRead()) {
+                    val text = procModules.readText()
+                    for (mod in listOf("BYNb", "mem_tool", "nh", "wanbai")) {
+                        if (text.contains(mod)) {
+                            found.add("/dev/$mod")
+                        }
+                    }
+                }
+            } catch (_: Throwable) {}
+        }
+
         return found
     }
 

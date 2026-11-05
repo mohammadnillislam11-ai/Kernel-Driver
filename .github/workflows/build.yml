@@ -76,28 +76,32 @@ jobs:
           retention-days: 14
 
       - name: Publish to GitHub Releases
-        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.9
-          name: "NINMODS Kernel Driver Loader v1.0.9 (Non-Blocking UI & Live Permission Settings)"
+          tag: v1.1.0
+          name: "NINMODS Kernel Driver Loader v1.1.0 (Real APatch Architecture & Zero Dummy UI)"
           body: |
-            ## NINMODS Official Release v1.0.9
-            - **Non-Blocking Login Flow**:
-              - Removed blocking setup screen gate; app launches directly into Login with pre-filled credentials for instant 1-tap entry.
-            - **Settings Live Permissions & Root Management**:
-              - Users can verify and authorize SuperUser (`su`) and storage permissions directly from Settings anytime.
-              - Live root manager detection (APatch, KernelSU, Magisk, SuperUser).
-            - **Digital License Countdown Clock**:
-              - Real-time digital clock counting down in Hours : Minutes : Seconds (`HH:MM:SS`).
-            - **Kernel Driver Selection Dialog**:
-              - QX and RT buttons always open official Material 3 Dialog listing kernel-matched driver scripts.
-              - "Stop Driver" button enabled strictly when a driver is active.
-            - **Simplified Status Cards**:
-              - Driver Loader cards strictly display "Not Loaded" / "Working" and "Granted" / "Denied".
-            - **Modular Screen Organization**:
-              - Dedicated folder for every screen (`login`, `signup`, `forgotpassword`, `dashboard`, `loader`, `settings`, `profile`, `clock`).
+            ## NINMODS Official Release v1.1.0
+            - **100% Real APatch System Integration**:
+              - Completely purged dummy setup screen; app launches straight into live workspace.
+              - Live POSIX kernel detection (`Os.uname().release`).
+              - Real root shell executor (`su` fallback to `/data/adb/ap/bin/su`, `/system/bin/su`, `/data/adb/magisk/su`).
+              - Character device node detector inspecting active kernel driver nodes (`/dev/BYNb`, `/dev/mem_tool`, `/dev/nh`, `/dev/wanbai`).
+            - **Interactive Status Cards**:
+              - Tap SuperUser card to immediately trigger/re-verify root authorization.
+              - Tap Kernel Driver card to refresh live device node states.
+            - **Settings Live Permissions**:
+              - Real Root Manager inspection (APatch, KernelSU, Magisk).
+              - Tap to request SuperUser or Storage permissions anytime.
+            - **Live Digital License Countdown Clock**:
+              - Hours : Minutes : Seconds (`HH:MM:SS`) countdown ticker.
+            - **Official Material 3 Dialog & Driver Loading**:
+              - QX & RT buttons list matching kernel driver scripts with tap-to-load execution.
+              - Stop Driver button enabled strictly when driver is loaded.
+            - **Modular Clean Architecture**:
+              - Dedicated folders per screen (`loader`, `dashboard`, `settings`, `profile`, `login`, `signup`, `forgotpassword`, `clock`).
             - **Production Signed Release**:
               - Dedicated keystore `ninmods-release.jks` with R8 optimization.
           artifacts: "app/build/outputs/apk/release/*.apk"
