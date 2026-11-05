@@ -1,55 +1,157 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/apatch_background">
 
-    <!-- Top App Bar (APatch Minimal Header) -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="20dp"
-        android:background="@color/apatch_background">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/app_name"
-            android:textColor="@color/apatch_text_primary"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <ImageView
-            android:id="@+id/btnHeaderStatus"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:src="@drawable/ic_nav_home"
-            app:tint="@color/apatch_primary" />
-    </LinearLayout>
-
-    <!-- Main Fragment / Content Container -->
+    <!-- Fragment Display Container -->
     <FrameLayout
         android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_height="match_parent"
+        android:paddingBottom="96dp" />
 
-    <!-- Google Material 3 Navigation Bar (APatch Style) -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNavigation"
+    <!-- APatch Exact Floating Capsule Bottom Navigation Bar -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:background="@color/apatch_surface"
-        app:elevation="8dp"
-        app:itemIconTint="@color/apatch_text_primary"
-        app:itemTextColor="@color/apatch_text_primary"
-        app:itemActiveIndicatorStyle="@style/Widget.Material3.BottomNavigationView.ActiveIndicator"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav_menu" />
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:gravity="center"
+        android:paddingBottom="16dp">
 
-</LinearLayout>
+        <LinearLayout
+            android:id="@+id/floatingBar"
+            android:layout_width="wrap_content"
+            android:layout_height="64dp"
+            android:background="@drawable/apatch_floating_bar_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:elevation="12dp"
+            android:paddingHorizontal="10dp">
+
+            <!-- 1. Home / Dashboard Tab (Pill Expandable) -->
+            <LinearLayout
+                android:id="@+id/tabHome"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:background="@drawable/apatch_pill_selected"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="18dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/iconHome"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_nav_home_fill"
+                    app:tint="#D0BCFF" />
+
+                <TextView
+                    android:id="@+id/textHome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Home"
+                    android:textColor="#E3E2E6"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="visible" />
+            </LinearLayout>
+
+            <!-- 2. Driver Loader Tab (Wrench Tool Icon Button) -->
+            <LinearLayout
+                android:id="@+id/tabDrivers"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/iconDrivers"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_nav_wrench"
+                    app:tint="#939AA5" />
+
+                <TextView
+                    android:id="@+id/textDrivers"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Drivers"
+                    android:textColor="#E3E2E6"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- 3. Tuning / Modules Tab (Slider Tuning Icon Button) -->
+            <LinearLayout
+                android:id="@+id/tabTuning"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/iconTuning"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_nav_tuning"
+                    app:tint="#939AA5" />
+
+                <TextView
+                    android:id="@+id/textTuning"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Mods"
+                    android:textColor="#E3E2E6"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- 4. Settings Tab (Gear Icon Button) -->
+            <LinearLayout
+                android:id="@+id/tabSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/iconSettings"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_nav_gear"
+                    app:tint="#939AA5" />
+
+                <TextView
+                    android:id="@+id/textSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Settings"
+                    android:textColor="#E3E2E6"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>
