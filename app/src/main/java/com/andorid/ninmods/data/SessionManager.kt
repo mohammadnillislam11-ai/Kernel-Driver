@@ -14,6 +14,7 @@ class SessionManager(context: Context) {
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_USER_NAME = "user_name"
+        private const val KEY_USER_PASSWORD = "user_password"
         private const val KEY_REMEMBER = "remember_login"
         private const val KEY_LICENSE_EXPIRY = "license_expiry_time"
     }
@@ -50,9 +51,18 @@ class SessionManager(context: Context) {
         get() = prefs.getString(KEY_USER_NAME, "")
         set(value) = prefs.edit().putString(KEY_USER_NAME, value).apply()
 
+    var userPassword: String?
+        get() = prefs.getString(KEY_USER_PASSWORD, "")
+        set(value) = prefs.edit().putString(KEY_USER_PASSWORD, value).apply()
+
     var rememberLogin: Boolean
         get() = prefs.getBoolean(KEY_REMEMBER, true)
         set(value) = prefs.edit().putBoolean(KEY_REMEMBER, value).apply()
+
+    fun changePassword(newPassword: String): Boolean {
+        userPassword = newPassword
+        return true
+    }
 
     fun logout() {
         // Keep environment setup status, clear user session
