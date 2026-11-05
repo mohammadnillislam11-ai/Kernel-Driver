@@ -43,7 +43,7 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleRelease assembleDebug --stacktrace 2>&1 | tee build.log
 
       - name: Upload Build Log
         if: always()
@@ -56,8 +56,11 @@ jobs:
       - name: Prepare Release APK
         run: |
           mkdir -p dist
-          find app/build/outputs/apk -name "*.apk" -exec cp -v {} dist/NINMODS-DriverLoader-v1.0.0.apk \;
-          ls -lh dist/
+          find app/build/outputs/apk/ -type f -name "*.apk" | while read -r apk_path; do
+            echo "Found APK: $apk_path"
+            cp -v "$apk_path" dist/
+          done
+          ls -la dist/
 
       - name: Upload Release Artifact
         if: success()
@@ -75,7 +78,7 @@ jobs:
           tag: v1.0.0
           name: "NINMODS Kernel Driver Loader v1.0.0"
           body: "Official Release v1.0.0: Protected with Google R8/ProGuard Obfuscator, official APatch Jetpack Compose UI architecture, and 410+ Master Kernel Drivers."
-          artifacts: "dist/NINMODS-DriverLoader-v1.0.0.apk"
+          artifacts: "dist/*.apk"
           allowUpdates: true
           replacesArtifacts: true
           makeLatest: true
