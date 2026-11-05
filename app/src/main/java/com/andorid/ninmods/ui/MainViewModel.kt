@@ -102,6 +102,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun getDriversForMode(mode: String): List<File> {
+        return repository.getAllDrivers(mode)
+    }
+
     fun loadDriverScript(file: File) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isWorking = true)

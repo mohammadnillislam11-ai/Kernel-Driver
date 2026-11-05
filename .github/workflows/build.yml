@@ -82,7 +82,7 @@ jobs:
             ## NINMODS Official Release v1.0.1
             - **Google Official Code Obfuscator**: R8 & ProGuard enabled.
             - **Master Drivers**: 410+ Kernel Objects integrated.
-            - **APatch UI Architecture**: Official APatch Jetpack Compose theme, WarningCard, and floating capsule bottom bar.
+            - **UI Architecture**: NinMods Jetpack Compose theme, Security WarningCard, and floating capsule navigation bar.
             - **Package**: `com.andorid.ninmods`
           artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true

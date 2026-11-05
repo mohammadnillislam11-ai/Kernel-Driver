@@ -46,11 +46,6 @@ class SettingsFragment : Fragment() {
             requireActivity().finish()
         }
 
-        binding.layoutGithub.setOnClickListener {
-            val url = "https://github.com/mohammadnillislam11-ai/Kernel-Driver"
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        }
-
         binding.layoutTelegram.setOnClickListener {
             val url = "https://t.me/ninmods"
             try {

@@ -116,7 +116,7 @@ fun APatchLoginScreen(
                 )
 
                 Text(
-                    text = "KernelPatch Official Driver Loader Subsystem",
+                    text = "NinMods Kernel Driver Loader Subsystem",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -283,7 +283,7 @@ fun APatchLoginScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "APatch Engine Active • GKI Ready",
+                            text = "NinMods Engine Active • GKI Ready",
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSecondaryContainer

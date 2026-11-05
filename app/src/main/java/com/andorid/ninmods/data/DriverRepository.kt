@@ -18,12 +18,12 @@ class DriverRepository(private val context: Context) {
     suspend fun extractDriversIfNeeded(onProgress: (String) -> Unit): Boolean = withContext(Dispatchers.IO) {
         val marker = File(driversDir, ".extracted")
         if (marker.exists()) {
-            onProgress("Drivers already extracted.")
+            onProgress("NinMods drivers verified.")
             return@withContext true
         }
 
         try {
-            onProgress("Extracting kernel driver archives...")
+            onProgress("Extracting NinMods kernel driver archives...")
             
             // Extract primary Kernel_Drivers.zip
             extractZipAsset("Kernel_Drivers.zip")
@@ -66,7 +66,6 @@ class DriverRepository(private val context: Context) {
         }
         zipInputStream.close()
     }
-    }
 
     /**
      * Locates matching driver script files (.ko.sh or .sh) based on kernel version and mode (QX / RT).
@@ -77,11 +76,15 @@ class DriverRepository(private val context: Context) {
             return@withContext emptyList()
         }
 
-        val allFiles = targetFolder.listFiles()?.filter { it.isFile && (it.name.endsWith(".sh") || it.name.endsWith(".ko.sh")) }
-            ?: return@withContext emptyList()
+        val fileArray = targetFolder.listFiles() ?: return@withContext emptyList()
+        val allFiles = fileArray.filter { f -> f.isFile && (f.name.endsWith(".sh") || f.name.endsWith(".ko.sh")) }
+
+        if (allFiles.isEmpty()) {
+            return@withContext emptyList()
+        }
 
         // 1. Exact match (e.g. starts with 4.19.157)
-        val exactMatches = allFiles.filter { it.name.startsWith(kernelVersion, ignoreCase = true) }
+        val exactMatches = allFiles.filter { f -> f.name.startsWith(kernelVersion, ignoreCase = true) }
         if (exactMatches.isNotEmpty()) {
             return@withContext exactMatches
         }
@@ -92,12 +95,26 @@ class DriverRepository(private val context: Context) {
             if (parts.size >= 2) "${parts[0]}.${parts[1]}" else kernelVersion
         } else kernelVersion
 
-        val mmMatches = allFiles.filter { it.name.startsWith(majorMinor, ignoreCase = true) }
+        val mmMatches = allFiles.filter { f -> f.name.startsWith(majorMinor, ignoreCase = true) }
         if (mmMatches.isNotEmpty()) {
             return@withContext mmMatches
         }
 
         // 3. Fallback: Return all available in mode so user can pick
-        return@withContext allFiles.sortedBy { it.name }
+        return@withContext allFiles.sortedBy { f -> f.name }
+    }
+
+    /**
+     * Retrieves all available driver scripts for the specified mode.
+     */
+    suspend fun getAllDrivers(mode: String): List<File> = withContext(Dispatchers.IO) {
+        val targetFolder = File(driversDir, mode)
+        if (!targetFolder.exists() || !targetFolder.isDirectory) {
+            return@withContext emptyList()
+        }
+
+        val fileArray = targetFolder.listFiles() ?: return@withContext emptyList()
+        fileArray.filter { f -> f.isFile && (f.name.endsWith(".sh") || f.name.endsWith(".ko.sh")) }
+            .sortedBy { f -> f.name }
     }
 }

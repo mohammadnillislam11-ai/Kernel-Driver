@@ -8,11 +8,15 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.andorid.ninmods.R
 import com.andorid.ninmods.databinding.FragmentDriversBinding
+import com.andorid.ninmods.databinding.ItemDriverCardBinding
 import com.andorid.ninmods.ui.MainViewModel
+import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.launch
 import java.io.File
 
 class DriversFragment : Fragment() {
@@ -42,20 +46,30 @@ class DriversFragment : Fragment() {
     private fun setupTabs() {
         binding.btnTabQx.setOnClickListener {
             currentMode = "QX"
+            binding.btnTabQx.setBackgroundColor(0xFFD0BCFF.toInt())
+            binding.btnTabQx.setTextColor(0xFF381E72.toInt())
+            binding.btnTabRt.setBackgroundColor(0xFF24262A.toInt())
+            binding.btnTabRt.setTextColor(0xFFE3E2E6.toInt())
             loadDriversList()
         }
         binding.btnTabRt.setOnClickListener {
             currentMode = "RT"
+            binding.btnTabRt.setBackgroundColor(0xFFD0BCFF.toInt())
+            binding.btnTabRt.setTextColor(0xFF381E72.toInt())
+            binding.btnTabQx.setBackgroundColor(0xFF24262A.toInt())
+            binding.btnTabQx.setTextColor(0xFFE3E2E6.toInt())
             loadDriversList()
         }
     }
 
     private fun loadDriversList() {
-        viewModel.prepareDrivers(currentMode) { matches ->
-            binding.rvDriversList.adapter = DriversAdapter(matches) { selectedFile ->
+        viewLifecycleOwner.lifecycleScope.launch {
+            val drivers = viewModel.getDriversForMode(currentMode)
+            binding.tvDriversCount.text = "AVAILABLE MODULES (${drivers.size})"
+            binding.rvDriversList.adapter = DriversAdapter(drivers, currentMode) { selectedFile ->
                 AlertDialog.Builder(requireContext())
                     .setTitle("Execute Driver Module")
-                    .setMessage("Do you want to execute ${selectedFile.name} as root?")
+                    .setMessage("Execute ${selectedFile.name} with superuser permissions?")
                     .setPositiveButton("Execute") { _, _ ->
                         viewModel.loadDriverScript(selectedFile)
                     }
@@ -72,27 +86,25 @@ class DriversFragment : Fragment() {
 
     class DriversAdapter(
         private val files: List<File>,
-        private val onClick: (File) -> Unit
+        private val mode: String,
+        private val onExecute: (File) -> Unit
     ) : RecyclerView.Adapter<DriversAdapter.ViewHolder>() {
 
-        class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-            val tvName: TextView = view.findViewById(android.R.id.text1)
-            val tvPath: TextView = view.findViewById(android.R.id.text2)
-        }
+        class ViewHolder(val binding: ItemDriverCardBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_2, parent, false)
-            return ViewHolder(view)
+            val binding = ItemDriverCardBinding.inflate(
+                LayoutInflater.from(parent.context), parent, false
+            )
+            return ViewHolder(binding)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val file = files[position]
-            holder.tvName.text = file.name
-            holder.tvName.setTextColor(0xFFE3E2E6.toInt())
-            holder.tvPath.text = file.parentFile?.name ?: ""
-            holder.tvPath.setTextColor(0xFF8B949E.toInt())
-            holder.view.setOnClickListener { onClick(file) }
+            holder.binding.tvDriverName.text = file.name
+            holder.binding.tvDriverMode.text = "Mode: $mode • ${file.parentFile?.name ?: ""}"
+            holder.binding.btnExecuteDriver.setOnClickListener { onExecute(file) }
+            holder.itemView.setOnClickListener { onExecute(file) }
         }
 
         override fun getItemCount() = files.size

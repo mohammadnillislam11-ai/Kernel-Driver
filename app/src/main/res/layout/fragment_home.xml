@@ -5,19 +5,47 @@
     android:layout_height="match_parent"
     android:background="@color/apatch_background"
     android:paddingHorizontal="16dp"
-    android:paddingBottom="16dp">
+    android:paddingTop="16dp"
+    android:paddingBottom="96dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- APatch Style Hero Card (System & Driver Status) -->
+        <!-- Top Title Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Driver Loader"
+            android:textColor="@color/apatch_text_primary"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Kernel Driver Controller &amp; Live Console"
+            android:textColor="@color/apatch_text_secondary"
+            android:textSize="13sp" />
+
+        <!-- Category Header: System Status -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="KERNEL DRIVER STATUS"
+            android:textColor="@color/apatch_primary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!-- Hero Status Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:cardCornerRadius="24dp"
+            android:layout_marginTop="10dp"
+            app:cardCornerRadius="20dp"
             app:cardBackgroundColor="@color/apatch_surface"
             app:strokeColor="@color/apatch_outline"
             app:strokeWidth="1dp">
@@ -226,7 +254,7 @@
                     android:textColor="@color/apatch_success"
                     android:textSize="12sp"
                     android:lineSpacingExtra="2dp"
-                    android:text="APatch Core Initialized...\n" />
+                    android:text="NinMods Driver Initialized...\n" />
             </ScrollView>
         </com.google.android.material.card.MaterialCardView>
 
