@@ -2,8 +2,8 @@ package com.andorid.ninmods.ui.dashboard
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,20 +28,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.andorid.ninmods.R
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.clock.LicenseClockCard
 
-data class DashboardApp(
+data class LauncherItem(
     val name: String,
     val packageName: String,
     val icon: ImageVector
@@ -53,13 +52,30 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val pm = context.packageManager
 
-    val apps = listOf(
-        DashboardApp("Free Fire", "com.dts.freefireth", Icons.Filled.SportsEsports),
-        DashboardApp("FF MAX", "com.dts.freefiremax", Icons.Filled.Games),
-        DashboardApp("Engine", "ninmods.engine", Icons.Filled.Tune),
-        DashboardApp("Injector", "ninmods.injector", Icons.Filled.RocketLaunch)
-    )
+    // Supported Games List (Real system package check)
+    val knownGames = remember {
+        listOf(
+            LauncherItem("Free Fire", "com.dts.freefireth", Icons.Filled.SportsEsports),
+            LauncherItem("FF MAX", "com.dts.freefiremax", Icons.Filled.Games)
+        )
+    }
+
+    // Only installed games will be displayed; if none installed, card is hidden
+    val installedGames = remember(context) {
+        knownGames.filter { game ->
+            isPackageInstalled(pm, game.packageName)
+        }
+    }
+
+    // Official NinMods Internal Mods only
+    val modsList = remember {
+        listOf(
+            LauncherItem("Engine", "ninmods.engine", Icons.Filled.Tune),
+            LauncherItem("Injector", "ninmods.injector", Icons.Filled.RocketLaunch)
+        )
+    }
 
     Column(
         modifier = modifier
@@ -70,10 +86,82 @@ fun DashboardScreen(
     ) {
         Spacer(modifier = Modifier.height(4.dp))
 
-        // License Expiry Digital Clock
+        // 1. Digital License Expiry Countdown Clock (Real-Time)
         LicenseClockCard(sessionManager = sessionManager)
 
-        // 4 Apps Side-by-Side Launcher Container
+        // 2. Game Launcher Card (Strictly visible ONLY when games are installed on device)
+        if (installedGames.isNotEmpty()) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "GAME LAUNCHER",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        installedGames.forEach { game ->
+                            ElevatedCard(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { launchApp(context, game.packageName, game.name) },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 14.dp, horizontal = 4.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = game.icon,
+                                        contentDescription = game.name,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(
+                                        text = game.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Quick Launch Card: Contains exclusively our Mods (Engine & Injector)
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -96,16 +184,15 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 4 Apps Side-by-Side in Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    apps.forEach { app ->
+                    modsList.forEach { mod ->
                         ElevatedCard(
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { launchApp(context, app.packageName, app.name) },
+                                .clickable { launchApp(context, mod.packageName, mod.name) },
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.elevatedCardColors(
                                 containerColor = MaterialTheme.colorScheme.surface
@@ -120,8 +207,8 @@ fun DashboardScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = app.icon,
-                                    contentDescription = app.name,
+                                    imageVector = mod.icon,
+                                    contentDescription = mod.name,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -129,7 +216,7 @@ fun DashboardScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    text = app.name,
+                                    text = mod.name,
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -144,46 +231,16 @@ fun DashboardScreen(
             }
         }
 
-        // Secondary Info / Status Banner
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo_n),
-                    contentDescription = "NinMods Logo",
-                    modifier = Modifier.size(40.dp)
-                )
-
-                Spacer(modifier = Modifier.size(14.dp))
-
-                Column {
-                    Text(
-                        text = "NinMods Kernel Controller",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Official Environment Active",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+private fun isPackageInstalled(pm: PackageManager, packageName: String): Boolean {
+    return try {
+        pm.getPackageInfo(packageName, 0)
+        true
+    } catch (e: Exception) {
+        pm.getLaunchIntentForPackage(packageName) != null
     }
 }
 
