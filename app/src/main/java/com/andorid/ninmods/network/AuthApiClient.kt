@@ -110,13 +110,13 @@ object AuthApiClient {
 
     /**
      * POST /api/v2/auth/signup
+     * Strictly accepts: username, email, password, password_again
      */
     suspend fun signup(
         username: String,
         email: String,
         password: String,
-        passwordAgain: String = password,
-        telephone: String = ""
+        passwordAgain: String = password
     ): Result<SignUpResponse> = withContext(Dispatchers.IO) {
         try {
             val payload = JSONObject().apply {
@@ -124,7 +124,6 @@ object AuthApiClient {
                 put("email", email.trim())
                 put("password", password.trim())
                 put("password_again", passwordAgain.trim())
-                if (telephone.isNotBlank()) put("telephone", telephone.trim())
             }
 
             val (code, responseBody) = sendPostRequest(AppConfig.SIGNUP_URL, payload.toString())
