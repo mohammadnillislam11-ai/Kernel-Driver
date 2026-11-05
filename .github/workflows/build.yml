@@ -43,24 +43,19 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew assembleRelease --stacktrace 2>&1 | tee build.log
-          cp -v app/build/outputs/apk/release/*.apk ./NINMODS-DriverLoader-v1.0.0.apk
-          ls -la ./NINMODS-DriverLoader-v1.0.0.apk
-
-      - name: Upload Build Log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
-          retention-days: 7
+          ./gradlew assembleRelease --stacktrace
+          echo "Listing all build outputs:"
+          ls -laR app/build/outputs/ || true
+          mkdir -p release_dist
+          find app/build/outputs/ -type f -name "*.apk" -exec cp -v {} release_dist/NINMODS-DriverLoader-v1.0.0.apk \;
+          ls -la release_dist/
 
       - name: Upload Release Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DriverLoader-Release
-          path: ./NINMODS-DriverLoader-v1.0.0.apk
+          path: release_dist/*.apk
           retention-days: 14
 
       - name: Publish to GitHub Releases
@@ -71,7 +66,7 @@ jobs:
           tag: v1.0.0
           name: "NINMODS Kernel Driver Loader v1.0.0"
           body: "Official Release v1.0.0: Protected with Google R8/ProGuard Obfuscator, official APatch Jetpack Compose UI architecture, and 410+ Master Kernel Drivers."
-          artifacts: "./NINMODS-DriverLoader-v1.0.0.apk"
+          artifacts: "release_dist/NINMODS-DriverLoader-v1.0.0.apk"
           allowUpdates: true
           replacesArtifacts: true
           makeLatest: true
