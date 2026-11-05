@@ -3,14 +3,14 @@ package com.andorid.ninmods.ui.login
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import com.andorid.ninmods.data.SessionManager
-import com.andorid.ninmods.databinding.ActivityLoginBinding
 import com.andorid.ninmods.ui.MainActivity
+import com.andorid.ninmods.ui.compose.APatchLoginScreen
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : ComponentActivity() {
 
-    private lateinit var binding: ActivityLoginBinding
     private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,28 +24,16 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        binding = ActivityLoginBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        // Render Pure APatch Jetpack Compose Login Screen
+        setContent {
+            APatchLoginScreen { token, remember ->
+                sessionManager.isLoggedIn = true
+                sessionManager.authToken = token
+                sessionManager.rememberLogin = remember
 
-        binding.cbRemember.isChecked = sessionManager.rememberLogin
-
-        binding.btnLogin.setOnClickListener {
-            val key = binding.etAccessKey.text?.toString()?.trim() ?: ""
-
-            if (key.isEmpty()) {
-                binding.tilAccessKey.error = "Please enter an access key"
-                return@setOnClickListener
+                Toast.makeText(this, "Authentication verified. Access granted.", Toast.LENGTH_SHORT).show()
+                navigateToMain()
             }
-
-            binding.tilAccessKey.error = null
-
-            // Save session
-            sessionManager.isLoggedIn = true
-            sessionManager.authToken = key
-            sessionManager.rememberLogin = binding.cbRemember.isChecked
-
-            Toast.makeText(this, "Authentication verified. Access granted.", Toast.LENGTH_SHORT).show()
-            navigateToMain()
         }
     }
 
