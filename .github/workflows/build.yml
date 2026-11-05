@@ -43,19 +43,20 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew assembleRelease --stacktrace
-          echo "Listing all build outputs:"
-          ls -laR app/build/outputs/ || true
-          mkdir -p release_dist
-          find app/build/outputs/ -type f -name "*.apk" -exec cp -v {} release_dist/NINMODS-DriverLoader-v1.0.0.apk \;
-          ls -la release_dist/
+          ./gradlew assembleDebug assembleRelease --stacktrace
+          mkdir -p release_apks
+          find app/build/outputs/apk/ -type f -name "*.apk" | while read -r f; do
+            echo "Packaging: $f"
+            cp -v "$f" release_apks/
+          done
+          ls -la release_apks/
 
       - name: Upload Release Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: DriverLoader-Release
-          path: release_dist/*.apk
+          name: DriverLoader-APKs
+          path: release_apks/*.apk
           retention-days: 14
 
       - name: Publish to GitHub Releases
@@ -63,10 +64,18 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.0
-          name: "NINMODS Kernel Driver Loader v1.0.0"
-          body: "Official Release v1.0.0: Protected with Google R8/ProGuard Obfuscator, official APatch Jetpack Compose UI architecture, and 410+ Master Kernel Drivers."
-          artifacts: "release_dist/NINMODS-DriverLoader-v1.0.0.apk"
+          tag: v1.0.1
+          name: "NINMODS Kernel Driver Loader v1.0.1 (Official Release)"
+          body: |
+            ## NINMODS Official Release v1.0.1
+            
+            ### Features:
+            - **Google Official Code Obfuscator**: R8 & ProGuard enabled with class repackaging and code optimization.
+            - **Master Drivers**: 410+ Kernel Objects integrated (`.ko.sh` / `.sh` auto-dispatcher for QX & RT).
+            - **APatch UI Architecture**: Official APatch Jetpack Compose theme, WarningCard, and floating capsule bottom bar.
+            - **Authentication**: APatch official structure Login Page with SuperUser security verification.
+            - **Package**: `com.andorid.ninmods`
+          artifacts: "release_apks/*.apk"
           allowUpdates: true
           replacesArtifacts: true
           makeLatest: true
