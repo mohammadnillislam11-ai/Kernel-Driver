@@ -1,5 +1,6 @@
 package com.andorid.ninmods.ui.signup
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,11 +38,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,10 +55,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.R
+import com.andorid.ninmods.network.AuthApiClient
+import kotlinx.coroutines.launch
 
 @Composable
 fun SignUpScreen(
-    onSuccess: (email: String, name: String, remember: Boolean) -> Unit,
+    onSuccess: (email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
     var fullName by remember { mutableStateOf("") }
@@ -64,7 +70,10 @@ fun SignUpScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var rePasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -277,10 +286,33 @@ fun SignUpScreen(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                validateAndSubmit(fullName, email, password, rePassword, onError = { errorMessage = it }) {
-                    onSuccess(email.trim(), fullName.trim(), true)
+                when {
+                    fullName.trim().isEmpty() -> errorMessage = "Username is required"
+                    email.trim().isEmpty() -> errorMessage = "Email is required"
+                    password.length < 6 -> errorMessage = "Password must be at least 6 characters"
+                    password != rePassword -> errorMessage = "Passwords do not match"
+                    else -> {
+                        isLoading = true
+                        errorMessage = null
+                        scope.launch {
+                            val result = AuthApiClient.signup(
+                                username = fullName.trim(),
+                                email = email.trim(),
+                                password = password.trim(),
+                                passwordAgain = rePassword.trim()
+                            )
+                            isLoading = false
+                            if (result.isSuccess) {
+                                Toast.makeText(context, "Account created successfully! Please login.", Toast.LENGTH_LONG).show()
+                                onNavigateToLogin()
+                            } else {
+                                errorMessage = result.exceptionOrNull()?.message ?: "Sign up failed"
+                            }
+                        }
+                    }
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -290,11 +322,19 @@ fun SignUpScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text(
-                text = "Sign Up",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Text(
+                    text = "Sign Up",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(14.dp))

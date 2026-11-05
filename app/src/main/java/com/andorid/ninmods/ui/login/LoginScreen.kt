@@ -27,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +57,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.R
+import com.andorid.ninmods.network.AuthApiClient
 import com.andorid.ninmods.ui.forgotpassword.ForgotPasswordScreen
 import com.andorid.ninmods.ui.signup.SignUpScreen
 import com.andorid.ninmods.ui.theme.APatchTheme
+import kotlinx.coroutines.launch
 
 enum class AuthScreenState {
     LOGIN,
@@ -67,7 +71,7 @@ enum class AuthScreenState {
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (email: String, name: String, remember: Boolean) -> Unit
+    onLoginSuccess: (email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit
 ) {
     var authState by remember { mutableStateOf(AuthScreenState.LOGIN) }
 
@@ -97,7 +101,9 @@ fun LoginScreen(
                     }
                     AuthScreenState.SIGNUP -> {
                         SignUpScreen(
-                            onSuccess = onLoginSuccess,
+                            onSuccess = { email, name, apiKey, licenseRemainingSec, remember ->
+                                onLoginSuccess(email, name, apiKey, licenseRemainingSec, remember)
+                            },
                             onNavigateToLogin = { authState = AuthScreenState.LOGIN }
                         )
                     }
@@ -114,7 +120,7 @@ fun LoginScreen(
 
 @Composable
 private fun LoginContent(
-    onSuccess: (email: String, name: String, remember: Boolean) -> Unit,
+    onSuccess: (email: String, name: String, apiKey: String, licenseRemainingSec: Long?, remember: Boolean) -> Unit,
     onNavigateToSignUp: () -> Unit,
     onNavigateToForgotPassword: () -> Unit
 ) {
@@ -123,7 +129,9 @@ private fun LoginContent(
     var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -294,12 +302,31 @@ private fun LoginContent(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                if (email.trim().isNotEmpty() && password.trim().isNotEmpty()) {
-                    onSuccess(email.trim(), email.substringBefore("@"), rememberMe)
-                } else {
+                if (email.trim().isEmpty() || password.trim().isEmpty()) {
                     errorMessage = "Please enter email and password"
+                    return@Button
+                }
+
+                isLoading = true
+                errorMessage = null
+                scope.launch {
+                    val result = AuthApiClient.login(email.trim(), password.trim())
+                    isLoading = false
+                    if (result.isSuccess) {
+                        val auth = result.getOrThrow()
+                        onSuccess(
+                            auth.email.ifBlank { email.trim() },
+                            auth.username.ifBlank { email.substringBefore("@") },
+                            auth.apiKey,
+                            auth.activeLicense?.remainingSeconds,
+                            rememberMe
+                        )
+                    } else {
+                        errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
+                    }
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -309,11 +336,19 @@ private fun LoginContent(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text(
-                text = "Login",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Text(
+                    text = "Login",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

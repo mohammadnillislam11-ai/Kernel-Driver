@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +47,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.R
+import com.andorid.ninmods.network.AuthApiClient
+import kotlinx.coroutines.launch
 
 @Composable
 fun ForgotPasswordScreen(
@@ -53,7 +57,10 @@ fun ForgotPasswordScreen(
     var email by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -158,12 +165,25 @@ fun ForgotPasswordScreen(
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if (email.trim().isNotEmpty()) {
-                        submitted = true
-                    } else {
-                        errorMessage = "Email is required"
+                    if (email.trim().isEmpty()) {
+                        errorMessage = "Username or Email is required"
+                        return@Button
+                    }
+
+                    isLoading = true
+                    errorMessage = null
+                    scope.launch {
+                        val result = AuthApiClient.resetPassword(email.trim())
+                        isLoading = false
+                        if (result.isSuccess) {
+                            successMessage = result.getOrThrow().message
+                            submitted = true
+                        } else {
+                            errorMessage = result.exceptionOrNull()?.message ?: "Reset request failed"
+                        }
                     }
                 },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -173,11 +193,19 @@ fun ForgotPasswordScreen(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text(
-                    text = "Send Reset Link",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.5.dp
+                    )
+                } else {
+                    Text(
+                        text = "Send Reset Link",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         } else {
             Surface(
@@ -186,9 +214,14 @@ fun ForgotPasswordScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "A reset link has been dispatched to $email. Check your inbox to proceed.",
+                    text = successMessage ?: "A reset link has been dispatched to $email. Check your inbox to proceed.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(16.dp)
                 )

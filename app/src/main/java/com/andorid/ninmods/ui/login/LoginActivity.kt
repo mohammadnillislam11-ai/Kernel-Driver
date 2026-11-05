@@ -24,12 +24,16 @@ class LoginActivity : ComponentActivity() {
         }
 
         setContent {
-            LoginScreen { email, name, remember ->
+            LoginScreen { email, name, apiKey, licenseRemainingSec, remember ->
                 sessionManager.isLoggedIn = true
                 sessionManager.userEmail = email
                 sessionManager.userName = name
-                sessionManager.authToken = "nin_${System.currentTimeMillis()}"
+                sessionManager.authToken = apiKey
                 sessionManager.rememberLogin = remember
+
+                if (licenseRemainingSec != null && licenseRemainingSec > 0) {
+                    sessionManager.licenseExpiryMillis = System.currentTimeMillis() + (licenseRemainingSec * 1000L)
+                }
 
                 Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
                 navigateToMain()

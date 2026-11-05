@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +49,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.andorid.ninmods.data.SessionManager
+import com.andorid.ninmods.network.AuthApiClient
 import com.andorid.ninmods.ui.clock.LicenseClockCard
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
@@ -56,6 +60,7 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     var currentPassword by remember { mutableStateOf("") }
@@ -67,6 +72,7 @@ fun ProfileScreen(
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isUpdating by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -364,13 +370,41 @@ fun ProfileScreen(
                             return@Button
                         }
 
-                        sessionManager.changePassword(newPassword)
-                        Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_SHORT).show()
-                        showChangePasswordDialog = false
+                        val token = sessionManager.authToken ?: ""
+                        if (token.isBlank()) {
+                            // Offline/local session update
+                            sessionManager.changePassword(newPassword)
+                            Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_SHORT).show()
+                            showChangePasswordDialog = false
+                            return@Button
+                        }
+
+                        isUpdating = true
+                        errorMessage = null
+                        scope.launch {
+                            val result = AuthApiClient.updatePassword(token, newPassword)
+                            isUpdating = false
+                            if (result.isSuccess) {
+                                sessionManager.changePassword(newPassword)
+                                Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_SHORT).show()
+                                showChangePasswordDialog = false
+                            } else {
+                                errorMessage = result.exceptionOrNull()?.message ?: "Failed to update password"
+                            }
+                        }
                     },
+                    enabled = !isUpdating,
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text("Save")
+                    if (isUpdating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Save")
+                    }
                 }
             },
             dismissButton = {
