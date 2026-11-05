@@ -75,4 +75,24 @@ object ShellExecutor {
             process?.destroy()
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Executes a single command as root synchronously on the calling thread (or dispatcher).
+     */
+    fun executeRoot(command: String): Boolean {
+        return try {
+            val suBin = listOf(
+                "/system/bin/su",
+                "/system/xbin/su",
+                "/data/adb/ap/bin/su",
+                "/data/adb/magisk/su"
+            ).firstOrNull { java.io.File(it).exists() } ?: "su"
+
+            val proc = ProcessBuilder(suBin, "-c", command).start()
+            val exitCode = proc.waitFor()
+            exitCode == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
