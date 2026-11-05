@@ -47,7 +47,8 @@ import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.MainViewModel
 import com.andorid.ninmods.ui.clock.LicenseClockCard
-import com.andorid.ninmods.ui.component.DriverSelectionBottomSheet
+import com.andorid.ninmods.ui.dialogs.AppSelectionBottomSheet
+import com.andorid.ninmods.ui.dialogs.SheetItem
 import java.io.File
 
 @Composable
@@ -156,7 +157,7 @@ fun DriverLoaderScreen(
             }
         }
 
-        // 3. Simple Action Buttons: QX and RT (Opens Bottom Sheet Modal)
+        // 3. Simple Action Buttons: QX and RT (Opens Reusable Bottom Sheet Modal from ui/dialogs)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -305,14 +306,26 @@ fun DriverLoaderScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // 6. Android Official Material 3 Bottom Sheet (Sliding from bottom with rounded corners and selection check)
+    // 6. Universal Reusable Bottom Sheet (from ui/dialogs/AppBottomSheet.kt)
     if (showDriverSheet) {
-        DriverSelectionBottomSheet(
-            mode = sheetMode,
-            kernelRelease = state.kernelRelease,
-            drivers = sheetDrivers,
+        val sheetItems = remember(sheetDrivers) {
+            sheetDrivers.map { file ->
+                SheetItem(
+                    value = file,
+                    title = file.name,
+                    subtitle = "Kernel Driver Script",
+                    icon = Icons.Filled.Build
+                )
+            }
+        }
+
+        AppSelectionBottomSheet(
+            title = "Select $sheetMode Driver",
+            subtitle = if (state.kernelRelease.isNotEmpty()) "Matched Kernel: Linux ${state.kernelRelease}" else "Compatible Kernel Drivers",
+            items = sheetItems,
+            actionButtonText = "Load Driver",
             onDismissRequest = { showDriverSheet = false },
-            onDriverSelected = { selectedFile ->
+            onItemSelected = { selectedFile ->
                 showDriverSheet = false
                 viewModel.loadDriverScript(selectedFile)
             }

@@ -1,8 +1,9 @@
-package com.andorid.ninmods.ui.component
+package com.andorid.ninmods.ui.dialogs
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.BottomSheetDefaults
@@ -40,23 +40,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import java.io.File
 
+/**
+ * Universal Item Model for Reusable Selection Bottom Sheets.
+ */
+data class SheetItem<T>(
+    val value: T,
+    val title: String,
+    val subtitle: String? = null,
+    val icon: ImageVector? = null
+)
+
+/**
+ * Universal Reusable Selection Bottom Sheet.
+ * Can be called from ANY screen across the app for:
+ * - Driver Selection (QX / RT)
+ * - Account / Profile switching
+ * - Kernel or Node selection
+ * - Any single-choice list
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DriverSelectionBottomSheet(
-    mode: String,
-    kernelRelease: String,
-    drivers: List<File>,
+fun <T> AppSelectionBottomSheet(
+    title: String,
+    subtitle: String? = null,
+    items: List<SheetItem<T>>,
+    initialSelected: T? = items.firstOrNull()?.value,
+    actionButtonText: String = "Confirm",
     onDismissRequest: () -> Unit,
-    onDriverSelected: (File) -> Unit
+    onItemSelected: (T) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    var selectedFile by remember { mutableStateOf(drivers.firstOrNull()) }
+    var currentSelected by remember { mutableStateOf(initialSelected) }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -71,43 +91,46 @@ fun DriverSelectionBottomSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            // Header
+            // Header Title
             Text(
-                text = "Select $mode Driver",
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = if (kernelRelease.isNotEmpty()) "Matched Kernel: Linux $kernelRelease" else "Compatible Kernel Drivers",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (drivers.isEmpty()) {
+            if (items.isEmpty()) {
                 Text(
-                    text = "No compatible driver scripts found in storage.",
+                    text = "No items available to display.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             } else {
-                // Driver Cards List (Scrollable if many)
+                // Scrollable Item Cards
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 340.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(drivers) { file ->
-                        val isSelected = selectedFile?.absolutePath == file.absolutePath
+                    items(items) { item ->
+                        val isSelected = currentSelected == item.value
 
                         ElevatedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { selectedFile = file },
+                                .clickable { currentSelected = item.value },
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.elevatedCardColors(
                                 containerColor = if (isSelected) {
@@ -124,34 +147,43 @@ fun DriverSelectionBottomSheet(
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) {
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                                    },
-                                    modifier = Modifier.size(42.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Build,
-                                        contentDescription = null,
-                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(10.dp)
-                                    )
+                                if (item.icon != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (isSelected) {
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                        },
+                                        modifier = Modifier.size(42.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = item.icon,
+                                            contentDescription = null,
+                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(10.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
                                 }
 
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Text(
-                                    text = file.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (item.subtitle != null) {
+                                        Text(
+                                            text = item.subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
 
                                 if (isSelected) {
                                     Icon(
@@ -176,17 +208,17 @@ fun DriverSelectionBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Action Button at Bottom (exact bottom-sheet action button styling)
+            // Action Button at Bottom
             Button(
                 onClick = {
-                    selectedFile?.let { file ->
+                    currentSelected?.let { sel ->
                         scope.launch {
                             sheetState.hide()
-                            onDriverSelected(file)
+                            onItemSelected(sel)
                         }
                     }
                 },
-                enabled = selectedFile != null,
+                enabled = currentSelected != null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -199,11 +231,60 @@ fun DriverSelectionBottomSheet(
                 )
             ) {
                 Text(
-                    text = "Load Driver",
+                    text = actionButtonText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+    }
+}
+
+/**
+ * Universal Custom Content Bottom Sheet.
+ * Allows displaying ANY custom layout inside the exact same bottom sheet design.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppCustomBottomSheet(
+    title: String,
+    subtitle: String? = null,
+    onDismissRequest: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            content()
         }
     }
 }

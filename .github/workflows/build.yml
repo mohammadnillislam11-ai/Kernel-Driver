@@ -80,14 +80,14 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.1.1
-          name: "NINMODS Kernel Driver Loader v1.1.1 (Official Bottom Sheet Driver Selection)"
+          tag: v1.1.2
+          name: "NINMODS Kernel Driver Loader v1.1.2 (Universal Reusable Bottom Sheet Architecture)"
           body: |
-            ## NINMODS Official Release v1.1.1
-            - **Android Official Bottom Sheet Driver Selector**:
-              - QX and RT driver selection now opens an official Material 3 `ModalBottomSheet` sliding up from the bottom.
-              - Rounded top corners (`28.dp`), top drag handle, and item selection checkmark.
-              - Full-width "Load Driver" action button at the bottom.
+            ## NINMODS Official Release v1.1.2
+            - **Universal Reusable Bottom Sheet (`ui/dialogs/`)**:
+              - Created generic `AppSelectionBottomSheet<T>` and `AppCustomBottomSheet` in `com.andorid.ninmods.ui.dialogs`.
+              - Reusable across ANY screen for drivers, account switcher, confirmations, and lists.
+              - Material 3 `ModalBottomSheet` sliding up from bottom with rounded top (`28.dp`), drag handle, selection radio checkmark, and full-width action button.
             - **100% Real APatch System Integration**:
               - Live POSIX kernel detection (`Os.uname().release`).
               - Real root shell executor (`su` fallback to `/data/adb/ap/bin/su`, `/system/bin/su`, `/data/adb/magisk/su`).
