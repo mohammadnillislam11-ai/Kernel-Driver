@@ -1,5 +1,6 @@
 package com.andorid.ninmods.ui.dialogs
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,19 +16,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -56,11 +59,18 @@ data class SheetItem<T>(
 )
 
 /**
- * Universal Reusable Selection Bottom Sheet.
+ * Universal Reusable Selection Bottom Sheet (ui/dialogs/AppBottomSheet.kt).
+ * Built 1:1 following the official Android / Meta design specs:
+ * - Top drag handle
+ * - Rounded item card with circular avatar/icon
+ * - Title and subtitle
+ * - Vibrant blue circular checkmark
+ * - Rounded full-width pill action button at bottom
+ *
  * Can be called from ANY screen across the app for:
  * - Driver Selection (QX / RT)
  * - Account / Profile switching
- * - Kernel or Node selection
+ * - Reboot / Power options
  * - Any single-choice list
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,14 +102,16 @@ fun <T> AppSelectionBottomSheet(
                 .padding(bottom = 32.dp)
         ) {
             // Header Title
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            if (title.isNotEmpty()) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
-            if (subtitle != null) {
+            if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -107,7 +119,9 @@ fun <T> AppSelectionBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (title.isNotEmpty() || !subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             if (items.isEmpty()) {
                 Text(
@@ -117,7 +131,7 @@ fun <T> AppSelectionBottomSheet(
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             } else {
-                // Scrollable Item Cards
+                // Scrollable Item Cards matching official dialog screenshot 1:1
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -127,19 +141,26 @@ fun <T> AppSelectionBottomSheet(
                     items(items) { item ->
                         val isSelected = currentSelected == item.value
 
-                        ElevatedCard(
+                        OutlinedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { currentSelected = item.value },
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.surfaceVariant
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) {
+                                    Color(0xFF0866FF)
                                 } else {
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 }
                             ),
-                            elevation = CardDefaults.cardElevation(0.dp)
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (isSelected) {
+                                    Color(0xFF0866FF).copy(alpha = 0.05f)
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -147,36 +168,36 @@ fun <T> AppSelectionBottomSheet(
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (item.icon != null) {
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = if (isSelected) {
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                                        },
-                                        modifier = Modifier.size(42.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = item.icon,
-                                            contentDescription = null,
-                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(10.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(14.dp))
+                                // Circular Avatar / Icon
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) {
+                                        Color(0xFF0866FF).copy(alpha = 0.12f)
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                    },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = item.icon ?: Icons.Filled.Build,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color(0xFF0866FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(11.dp)
+                                    )
                                 }
+
+                                Spacer(modifier = Modifier.width(14.dp))
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = item.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    if (item.subtitle != null) {
+                                    if (!item.subtitle.isNullOrBlank()) {
                                         Text(
                                             text = item.subtitle,
                                             style = MaterialTheme.typography.bodySmall,
@@ -185,19 +206,22 @@ fun <T> AppSelectionBottomSheet(
                                     }
                                 }
 
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // Vibrant blue checkmark circle
                                 if (isSelected) {
                                     Icon(
                                         imageVector = Icons.Filled.CheckCircle,
                                         contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
+                                        tint = Color(0xFF0866FF),
+                                        modifier = Modifier.size(26.dp)
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Outlined.Circle,
                                         contentDescription = "Not selected",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(24.dp)
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                                        modifier = Modifier.size(26.dp)
                                     )
                                 }
                             }
@@ -206,9 +230,9 @@ fun <T> AppSelectionBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Action Button at Bottom
+            // Action Pill Button at Bottom matching screenshot 1:1
             Button(
                 onClick = {
                     currentSelected?.let { sel ->
@@ -221,8 +245,8 @@ fun <T> AppSelectionBottomSheet(
                 enabled = currentSelected != null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
+                    .height(50.dp),
+                shape = RoundedCornerShape(25.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -233,7 +257,7 @@ fun <T> AppSelectionBottomSheet(
                 Text(
                     text = actionButtonText,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -267,14 +291,16 @@ fun AppCustomBottomSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            if (title.isNotEmpty()) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
-            if (subtitle != null) {
+            if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -282,7 +308,9 @@ fun AppCustomBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (title.isNotEmpty() || !subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             content()
         }

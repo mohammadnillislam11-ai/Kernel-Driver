@@ -11,8 +11,8 @@ android {
         applicationId = "com.andorid.ninmods"
         minSdk = 24
         targetSdk = 34
-        versionCode = 100
-        versionName = "1.0.0"
+        versionCode = 113
+        versionName = "1.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

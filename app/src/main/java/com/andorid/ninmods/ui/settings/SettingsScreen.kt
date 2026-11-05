@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
@@ -49,7 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.component.SwitchItem
+import com.andorid.ninmods.ui.dialogs.AppSelectionBottomSheet
+import com.andorid.ninmods.ui.dialogs.SheetItem
 import com.andorid.ninmods.util.RootDetector
+import com.andorid.ninmods.util.ShellExecutor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,6 +73,7 @@ fun SettingsScreen(
 
     var globalNamespace by remember { mutableStateOf(true) }
     var legacySu by remember { mutableStateOf(false) }
+    var showRebootSheet by remember { mutableStateOf(false) }
 
     val storageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -285,6 +290,53 @@ fun SettingsScreen(
             }
         }
 
+        // DEVICE POWER & REBOOT (Using universal AppSelectionBottomSheet)
+        Text(
+            text = "DEVICE POWER",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showRebootSheet = true }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Reboot Device",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.size(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Reboot Device",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "System reboot, recovery, bootloader or soft reboot",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         // SESSION
         Text(
             text = "SESSION",
@@ -407,5 +459,54 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    // Universal Reusable Selection Bottom Sheet for Device Reboot
+    if (showRebootSheet) {
+        val rebootOptions = listOf(
+            SheetItem(
+                value = "reboot",
+                title = "Normal Reboot",
+                subtitle = "Restart system cleanly",
+                icon = Icons.Filled.Refresh
+            ),
+            SheetItem(
+                value = "recovery",
+                title = "Reboot to Recovery",
+                subtitle = "Boot into TWRP or OrangeFox recovery",
+                icon = Icons.Filled.Terminal
+            ),
+            SheetItem(
+                value = "bootloader",
+                title = "Reboot to Bootloader",
+                subtitle = "Boot into Fastboot mode",
+                icon = Icons.Filled.Security
+            ),
+            SheetItem(
+                value = "soft",
+                title = "Soft Reboot",
+                subtitle = "Restart Android runtime (Zygote)",
+                icon = Icons.Filled.Refresh
+            )
+        )
+
+        AppSelectionBottomSheet(
+            title = "Reboot Device",
+            subtitle = "Select desired reboot mode",
+            items = rebootOptions,
+            actionButtonText = "Reboot",
+            onDismissRequest = { showRebootSheet = false },
+            onItemSelected = { mode ->
+                showRebootSheet = false
+                scope.launch(Dispatchers.IO) {
+                    when (mode) {
+                        "reboot" -> ShellExecutor.executeRoot("svc power reboot || reboot")
+                        "recovery" -> ShellExecutor.executeRoot("reboot recovery")
+                        "bootloader" -> ShellExecutor.executeRoot("reboot bootloader")
+                        "soft" -> ShellExecutor.executeRoot("setprop ctl.restart zygote")
+                    }
+                }
+            }
+        )
     }
 }
