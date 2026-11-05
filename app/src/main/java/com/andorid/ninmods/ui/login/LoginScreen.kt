@@ -112,8 +112,8 @@ private fun LoginContent(
     onNavigateToSignUp: () -> Unit,
     onNavigateToForgotPassword: () -> Unit
 ) {
-    var email by remember { mutableStateOf("user@ninmods.dev") }
-    var password by remember { mutableStateOf("ninmods123") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -163,7 +163,7 @@ private fun LoginContent(
             },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Email") },
-            placeholder = { Text("user@ninmods.dev") },
+            placeholder = { Text("Email") },
             singleLine = true,
             leadingIcon = {
                 Icon(

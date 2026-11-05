@@ -2,7 +2,9 @@ package com.andorid.ninmods.ui.compose
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
@@ -20,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -29,6 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -107,27 +112,40 @@ fun MainAppScreen(
         },
         bottomBar = {
             if (currentDestination in bottomBarDestinations) {
-                NavigationBar(tonalElevation = 8.dp) {
-                    bottomBarDestinations.forEach { dest ->
-                        val isSelected = currentDestination == dest
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = { currentDestination = dest },
-                            icon = {
-                                Icon(
-                                    imageVector = if (isSelected) dest.selectedIcon else dest.unselectedIcon,
-                                    contentDescription = dest.label
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = dest.label,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            },
-                            alwaysShowLabel = false
-                        )
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                    tonalElevation = 8.dp
+                ) {
+                    NavigationBar(
+                        modifier = Modifier.clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+                        tonalElevation = 0.dp,
+                        containerColor = Color.Transparent
+                    ) {
+                        bottomBarDestinations.forEach { dest ->
+                            val isSelected = currentDestination == dest
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = { currentDestination = dest },
+                                icon = {
+                                    Icon(
+                                        imageVector = if (isSelected) dest.selectedIcon else dest.unselectedIcon,
+                                        contentDescription = dest.label
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = dest.label,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                },
+                                alwaysShowLabel = false
+                            )
+                        }
                     }
                 }
             }

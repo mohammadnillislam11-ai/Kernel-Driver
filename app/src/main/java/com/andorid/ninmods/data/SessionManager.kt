@@ -43,11 +43,11 @@ class SessionManager(context: Context) {
         set(value) = prefs.edit().putString(KEY_AUTH_TOKEN, value).apply()
 
     var userEmail: String?
-        get() = prefs.getString(KEY_USER_EMAIL, "user@ninmods.dev")
+        get() = prefs.getString(KEY_USER_EMAIL, "")
         set(value) = prefs.edit().putString(KEY_USER_EMAIL, value).apply()
 
     var userName: String?
-        get() = prefs.getString(KEY_USER_NAME, "NinMods User")
+        get() = prefs.getString(KEY_USER_NAME, "")
         set(value) = prefs.edit().putString(KEY_USER_NAME, value).apply()
 
     var rememberLogin: Boolean

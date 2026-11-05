@@ -80,18 +80,23 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                val displayName = sessionManager.userName?.takeIf { it.isNotBlank() } ?: "Authenticated User"
+                val displayEmail = sessionManager.userEmail?.takeIf { it.isNotBlank() }
+
                 Text(
-                    text = sessionManager.userName ?: "NinMods User",
+                    text = displayName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Text(
-                    text = sessionManager.userEmail ?: "user@ninmods.dev",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (displayEmail != null) {
+                    Text(
+                        text = displayEmail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 

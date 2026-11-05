@@ -144,7 +144,7 @@ fun SignUpScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Email") },
-            placeholder = { Text("user@ninmods.dev") },
+            placeholder = { Text("Email") },
             singleLine = true,
             leadingIcon = {
                 Icon(
