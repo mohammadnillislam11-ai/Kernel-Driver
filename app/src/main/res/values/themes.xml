@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.DriverLoader" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="android:statusBarColor">#0D1117</item>
-        <item name="android:navigationBarColor">#0D1117</item>
+        <item name="android:statusBarColor">@color/apatch_background</item>
+        <item name="android:navigationBarColor">@color/apatch_surface</item>
+        <item name="android:windowBackground">@color/apatch_background</item>
+        <item name="colorPrimary">@color/apatch_primary</item>
+        <item name="colorSecondary">@color/apatch_secondary</item>
+        <item name="colorSurface">@color/apatch_surface</item>
+        <item name="colorOutline">@color/apatch_outline</item>
     </style>
 </resources>

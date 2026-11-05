@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- APatch Dark Color Palette (Material Design 3) -->
+    <color name="apatch_background">#121316</color>
+    <color name="apatch_surface">#1A1C1E</color>
+    <color name="apatch_surface_variant">#24262A</color>
+    <color name="apatch_primary">#D0BCFF</color>
+    <color name="apatch_on_primary">#381E72</color>
+    <color name="apatch_secondary">#CCC2DC</color>
+    <color name="apatch_text_primary">#E3E2E6</color>
+    <color name="apatch_text_secondary">#C4C6D0</color>
+    <color name="apatch_success">#81C784</color>
+    <color name="apatch_success_container">#1B3721</color>
+    <color name="apatch_error">#FFB4AB</color>
+    <color name="apatch_error_container">#93000A</color>
+    <color name="apatch_outline">#44474F</color>
+    <color name="apatch_terminal_bg">#0D0E11</color>
+</resources>

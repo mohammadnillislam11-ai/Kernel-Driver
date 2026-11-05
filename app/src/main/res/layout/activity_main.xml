@@ -4,186 +4,52 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D1117"
-    android:padding="16dp">
+    android:background="@color/apatch_background">
 
-    <!-- Header Card -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="14dp"
-        app:cardBackgroundColor="#161B22"
-        app:strokeColor="#30363D"
-        app:strokeWidth="1dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="NINMODS DRIVER LOADER"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:id="@+id/tvStatusBadge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="CHECKING"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:background="#424242" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvKernelInfo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Kernel: Detecting..."
-                android:textColor="#8B949E"
-                android:textSize="13sp"
-                android:fontFamily="monospace" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Action Buttons Row 1 -->
+    <!-- Top App Bar (APatch Minimal Header) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLoadQx"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="LOAD QX DRIVER"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            app:backgroundTint="#238636"
-            app:cornerRadius="8dp" />
-
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="wrap_content" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLoadRt"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="LOAD RT DRIVER"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            app:backgroundTint="#1F6FEB"
-            app:cornerRadius="8dp" />
-    </LinearLayout>
-
-    <!-- Action Buttons Row 2 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnUnload"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="UNLOAD DRIVER"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="#DA3633"
-            app:cornerRadius="8dp" />
-
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="wrap_content" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCheckStatus"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="CHECK NODE"
-            android:textColor="#C9D1D9"
-            app:strokeColor="#30363D"
-            app:cornerRadius="8dp" />
-    </LinearLayout>
-
-    <!-- Terminal Output Header -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:layout_marginBottom="6dp"
+        android:layout_height="64dp"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:background="@color/apatch_background">
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="LIVE CONSOLE OUTPUT"
-            android:textColor="#8B949E"
-            android:textSize="12sp"
+            android:text="@string/app_name"
+            android:textColor="@color/apatch_text_primary"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/btnClearLog"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="CLEAR"
-            android:textColor="#58A6FF"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:padding="6dp" />
+        <ImageView
+            android:id="@+id/btnHeaderStatus"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_nav_home"
+            app:tint="@color/apatch_primary" />
     </LinearLayout>
 
-    <!-- Terminal Console Window -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Main Fragment / Content Container -->
+    <FrameLayout
+        android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        app:cardCornerRadius="10dp"
-        app:cardBackgroundColor="#010409"
-        app:strokeColor="#21262D"
-        app:strokeWidth="1dp">
+        android:layout_weight="1" />
 
-        <ScrollView
-            android:id="@+id/scrollLog"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="12dp">
-
-            <TextView
-                android:id="@+id/tvConsoleLog"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textColor="#39D353"
-                android:textSize="12sp"
-                android:lineSpacingExtra="3dp"
-                android:text="Initializing Engine...\n" />
-        </ScrollView>
-    </com.google.android.material.card.MaterialCardView>
+    <!-- Google Material 3 Navigation Bar (APatch Style) -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="@color/apatch_surface"
+        app:elevation="8dp"
+        app:itemIconTint="@color/apatch_text_primary"
+        app:itemTextColor="@color/apatch_text_primary"
+        app:itemActiveIndicatorStyle="@style/Widget.Material3.BottomNavigationView.ActiveIndicator"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_menu" />
 
 </LinearLayout>

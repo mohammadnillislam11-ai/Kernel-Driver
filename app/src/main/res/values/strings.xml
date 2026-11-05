@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">Driver Loader</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_drivers">Drivers</string>
+    <string name="nav_settings">Settings</string>
+
+    <string name="status_active">WORKING</string>
+    <string name="status_inactive">NOT LOADED</string>
+    <string name="kernel_info_title">Kernel Information</string>
+    <string name="superuser_title">Superuser (Root)</string>
+    <string name="node_status_title">Character Device Nodes</string>
+    <string name="driver_actions_title">Driver Control</string>
+
+    <string name="btn_load_qx">Load QX Driver</string>
+    <string name="btn_load_rt">Load RT Driver</string>
+    <string name="btn_unload">Unload Driver</string>
+    <string name="btn_clear_log">Clear Log</string>
+    <string name="console_output_title">Real-Time Console Output</string>
 </resources>

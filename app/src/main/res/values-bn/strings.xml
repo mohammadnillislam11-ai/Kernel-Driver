@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">ড্রাইভার লোডার</string>
+    <string name="nav_home">হোম</string>
+    <string name="nav_drivers">ড্রাইভার</string>
+    <string name="nav_settings">সেটিংস</string>
+
+    <string name="status_active">সক্রিয় (WORKING)</string>
+    <string name="status_inactive">লোড হয়নি</string>
+    <string name="kernel_info_title">কার্নেল তথ্য</string>
+    <string name="superuser_title">সুপারইউজার (রুট)</string>
+    <string name="node_status_title">ডিভাইস নোড অবস্থা</string>
+    <string name="driver_actions_title">ড্রাইভার নিয়ন্ত্রণ</string>
+
+    <string name="btn_load_qx">QX ড্রাইভার লোড</string>
+    <string name="btn_load_rt">RT ড্রাইভার লোড</string>
+    <string name="btn_unload">ড্রাইভার আনলোড</string>
+    <string name="btn_clear_log">লগ ক্লিয়ার</string>
+    <string name="console_output_title">রিয়েল-টাইম কনসোল লগ</string>
+</resources>
