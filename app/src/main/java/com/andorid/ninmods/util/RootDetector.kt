@@ -15,13 +15,27 @@ object RootDetector {
     fun detect(context: Context): RootInfo {
         val pm = context.packageManager
 
-        // 1. Check Manager Packages
-        val hasApatch = isPackageInstalled(pm, "me.bmax.apatch") || File("/data/adb/apd").exists()
-        val hasKsu = isPackageInstalled(pm, "me.weishu.kernelsu") || File("/data/adb/ksud").exists()
-        val hasMagisk = isPackageInstalled(pm, "com.topjohnwu.magisk") || File("/data/adb/magisk").exists()
+        // 1. Check Manager Packages and daemon sockets/paths
+        val hasApatch = isPackageInstalled(pm, "me.bmax.apatch") ||
+                isPackageInstalled(pm, "me.bmax.apatch.debug") ||
+                File("/data/adb/ap").exists() ||
+                File("/data/adb/apd").exists() ||
+                File("/data/adb/ap/bin/su").exists()
 
-        // 2. Check SU Binary
+        val hasKsu = isPackageInstalled(pm, "me.weishu.kernelsu") ||
+                File("/data/adb/ksu").exists() ||
+                File("/data/adb/ksud").exists() ||
+                File("/data/adb/ksu/bin/su").exists()
+
+        val hasMagisk = isPackageInstalled(pm, "com.topjohnwu.magisk") ||
+                File("/data/adb/magisk").exists() ||
+                File("/sbin/.magisk").exists()
+
+        // 2. Check Standard SU Binaries in filesystem
         val suPaths = listOf(
+            "/data/adb/ap/bin/su",
+            "/data/adb/ksu/bin/su",
+            "/data/adb/magisk/su",
             "/system/bin/su",
             "/system/xbin/su",
             "/sbin/su",
@@ -40,7 +54,7 @@ object RootDetector {
             hasKsu -> "KernelSU"
             hasMagisk -> "Magisk"
             suFound != null -> "SuperUser"
-            else -> "Standard Su"
+            else -> "Not Installed"
         }
 
         return RootInfo(

@@ -1,8 +1,13 @@
 package com.andorid.ninmods.ui.settings
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,10 +26,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Terminal
@@ -36,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,8 +54,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.data.ShellExecutor
 import com.andorid.ninmods.ui.component.SwitchItem
@@ -66,27 +78,47 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var rootManagerName by remember { mutableStateOf("Detecting...") }
+    var isRooted by remember { mutableStateOf(false) }
     var isSuGranted by remember { mutableStateOf(false) }
     var isStorageGranted by remember { mutableStateOf(false) }
+    var isNotificationGranted by remember { mutableStateOf(false) }
 
     var globalNamespace by remember { mutableStateOf(true) }
     var legacySu by remember { mutableStateOf(false) }
     var showRebootSheet by remember { mutableStateOf(false) }
 
-    val storageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        isStorageGranted = permissions.values.any { it } || permissions.isEmpty()
-        Toast.makeText(context, "Storage permissions updated", Toast.LENGTH_SHORT).show()
+    fun checkStorage(ctx: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            ContextCompat.checkSelfPermission(
+                ctx,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            val rootInfo = RootDetector.detect(context)
-            rootManagerName = rootInfo.managerName
+    fun checkNotification(ctx: Context): Boolean {
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        val enabled = nm?.areNotificationsEnabled() ?: false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            enabled && ContextCompat.checkSelfPermission(
+                ctx,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            enabled
+        }
+    }
 
+    fun refreshAllStatuses() {
+        isStorageGranted = checkStorage(context)
+        isNotificationGranted = checkNotification(context)
+        scope.launch(Dispatchers.IO) {
+            val rootInfo = RootDetector.detect(context)
             val suTest = try {
                 val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
                 val out = p.inputStream.bufferedReader().readText()
@@ -95,8 +127,38 @@ fun SettingsScreen(
                 false
             }
             withContext(Dispatchers.Main) {
+                rootManagerName = rootInfo.managerName
+                isRooted = rootInfo.isRooted
                 isSuGranted = suTest
             }
+        }
+    }
+
+    val storageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        refreshAllStatuses()
+    }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        refreshAllStatuses()
+    }
+
+    LaunchedEffect(Unit) {
+        refreshAllStatuses()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshAllStatuses()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -109,7 +171,7 @@ fun SettingsScreen(
     ) {
         Spacer(modifier = Modifier.height(4.dp))
 
-        // PERMISSIONS & SYSTEM ROOT (User can grant/check anytime)
+        // PERMISSIONS & SYSTEM ROOT (Genuine real-time detection & grant triggers)
         Text(
             text = "PERMISSIONS & ROOT ENVIRONMENT",
             style = MaterialTheme.typography.labelMedium,
@@ -127,17 +189,21 @@ fun SettingsScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column {
-                // 1. Root Manager Item
+                // 1. Root Manager Item (Live Detection)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable {
+                            refreshAllStatuses()
+                            Toast.makeText(context, "Root Manager: $rootManagerName", Toast.LENGTH_SHORT).show()
+                        }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Security,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (isRooted) Color(0xFF81C784) else Color(0xFFFFB4AB),
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.size(16.dp))
@@ -151,18 +217,18 @@ fun SettingsScreen(
                         Text(
                             text = "Detected: $rootManagerName",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isRooted) Color(0xFF81C784) else Color(0xFFFFB4AB)
                         )
                     }
                     Icon(
-                        imageVector = Icons.Filled.CheckCircle,
+                        imageVector = if (isRooted) Icons.Filled.CheckCircle else Icons.Filled.Close,
                         contentDescription = null,
-                        tint = Color(0xFF81C784),
+                        tint = if (isRooted) Color(0xFF81C784) else Color(0xFFFFB4AB),
                         modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // 2. SuperUser Access (su) Item - Tap to request
+                // 2. SuperUser Access (su) Item - Tap to request authorization
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -188,7 +254,7 @@ fun SettingsScreen(
                     Icon(
                         imageVector = Icons.Filled.VpnKey,
                         contentDescription = null,
-                        tint = if (isSuGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.primary,
+                        tint = if (isSuGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.size(16.dp))
@@ -200,32 +266,45 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (isSuGranted) "Granted (uid=0)" else "Tap to Authorize Root Prompt",
+                            text = if (isSuGranted) "Granted (uid=0)" else "Denied (Tap to Authorize Root Prompt)",
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isSuGranted) Color(0xFF81C784) else Color(0xFFFFB4AB)
                         )
                     }
-                    if (isSuGranted) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = Color(0xFF81C784),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isSuGranted) Icons.Filled.CheckCircle else Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = if (isSuGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
 
-                // 3. Storage Permission Item - Tap to request
+                // 3. Storage Permission Item - Tap to grant (Real All Files / Storage)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            storageLauncher.launch(
-                                arrayOf(
-                                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                try {
+                                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            } else {
+                                storageLauncher.launch(
+                                    arrayOf(
+                                        android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                                    )
                                 )
-                            )
+                            }
                         }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -233,7 +312,7 @@ fun SettingsScreen(
                     Icon(
                         imageVector = Icons.Filled.Folder,
                         contentDescription = null,
-                        tint = if (isStorageGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.primary,
+                        tint = if (isStorageGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.size(16.dp))
@@ -245,11 +324,63 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (isStorageGranted) "Granted" else "Tap to Grant Storage Permission",
+                            text = if (isStorageGranted) "Granted" else "Denied (Tap to Grant All Files Access)",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isStorageGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (isStorageGranted) Color(0xFF81C784) else Color(0xFFFFB4AB)
                         )
                     }
+                    Icon(
+                        imageVector = if (isStorageGranted) Icons.Filled.CheckCircle else Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = if (isStorageGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // 4. Notification Permission Item - Tap to grant (Real POST_NOTIFICATIONS)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Notifications,
+                        contentDescription = null,
+                        tint = if (isNotificationGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.size(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Notification Permission",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isNotificationGranted) "Granted" else "Denied (Tap to Grant Notification)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isNotificationGranted) Color(0xFF81C784) else Color(0xFFFFB4AB)
+                        )
+                    }
+                    Icon(
+                        imageVector = if (isNotificationGranted) Icons.Filled.CheckCircle else Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = if (isNotificationGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

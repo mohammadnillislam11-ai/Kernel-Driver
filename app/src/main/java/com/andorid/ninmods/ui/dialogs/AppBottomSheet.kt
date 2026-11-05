@@ -149,16 +149,16 @@ fun <T> AppSelectionBottomSheet(
                             border = BorderStroke(
                                 width = if (isSelected) 1.5.dp else 1.dp,
                                 color = if (isSelected) {
-                                    Color(0xFF0866FF)
+                                    MaterialTheme.colorScheme.primary
                                 } else {
-                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                                 }
                             ),
                             colors = CardDefaults.outlinedCardColors(
                                 containerColor = if (isSelected) {
-                                    Color(0xFF0866FF).copy(alpha = 0.05f)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
                                 } else {
-                                    MaterialTheme.colorScheme.surface
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                 }
                             )
                         ) {
@@ -172,7 +172,7 @@ fun <T> AppSelectionBottomSheet(
                                 Surface(
                                     shape = CircleShape,
                                     color = if (isSelected) {
-                                        Color(0xFF0866FF).copy(alpha = 0.12f)
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                     } else {
                                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                                     },
@@ -181,7 +181,7 @@ fun <T> AppSelectionBottomSheet(
                                     Icon(
                                         imageVector = item.icon ?: Icons.Filled.Build,
                                         contentDescription = null,
-                                        tint = if (isSelected) Color(0xFF0866FF) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(11.dp)
@@ -208,12 +208,12 @@ fun <T> AppSelectionBottomSheet(
 
                                 Spacer(modifier = Modifier.width(12.dp))
 
-                                // Vibrant blue checkmark circle
+                                // Dynamic checkmark matching App UI theme
                                 if (isSelected) {
                                     Icon(
                                         imageVector = Icons.Filled.CheckCircle,
                                         contentDescription = "Selected",
-                                        tint = Color(0xFF0866FF),
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(26.dp)
                                     )
                                 } else {
@@ -232,7 +232,7 @@ fun <T> AppSelectionBottomSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Action Pill Button at Bottom matching screenshot 1:1
+            // Action Pill Button at Bottom matching App UI theme
             Button(
                 onClick = {
                     currentSelected?.let { sel ->
@@ -248,8 +248,8 @@ fun <T> AppSelectionBottomSheet(
                     .height(50.dp),
                 shape = RoundedCornerShape(25.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
