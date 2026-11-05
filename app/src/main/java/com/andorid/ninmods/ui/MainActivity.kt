@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentTransaction
 import com.andorid.ninmods.R
 import com.andorid.ninmods.databinding.ActivityMainBinding
 import com.andorid.ninmods.ui.dashboard.DashboardFragment
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         supportFragmentManager.beginTransaction()
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
             .replace(R.id.fragmentContainer, fragment)
             .commit()
     }

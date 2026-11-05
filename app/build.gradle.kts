@@ -17,6 +17,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("ninmods-release.jks")
+            storePassword = "ninmods_release_key"
+            keyAlias = "ninmods"
+            keyPassword = "ninmods_release_key"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -25,7 +34,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.findByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
