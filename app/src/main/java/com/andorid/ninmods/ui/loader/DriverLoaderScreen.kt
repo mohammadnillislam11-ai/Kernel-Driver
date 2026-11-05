@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -48,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.MainViewModel
 import com.andorid.ninmods.ui.clock.LicenseClockCard
+import com.andorid.ninmods.ui.component.DriverSelectionBottomSheet
 import java.io.File
 
 @Composable
@@ -58,9 +58,9 @@ fun DriverLoaderScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    var showDriverDialog by remember { mutableStateOf(false) }
-    var dialogMode by remember { mutableStateOf("") }
-    var dialogDrivers by remember { mutableStateOf<List<File>>(emptyList()) }
+    var showDriverSheet by remember { mutableStateOf(false) }
+    var sheetMode by remember { mutableStateOf("") }
+    var sheetDrivers by remember { mutableStateOf<List<File>>(emptyList()) }
 
     val logListState = rememberLazyListState()
 
@@ -82,12 +82,12 @@ fun DriverLoaderScreen(
         // 1. Digital License Expiration Clock (Hours - Minutes - Seconds)
         LicenseClockCard(sessionManager = sessionManager)
 
-        // 2. APatch 2 Side-by-Side Status Cards (Simple: 1 line status, no extra text clutter)
+        // 2. APatch 2 Side-by-Side Status Cards (Simple: 1 line status, interactive)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Card 1: Kernel Driver (Left)
+            // Card 1: Kernel Driver (Left - Interactive refresh)
             ElevatedCard(
                 modifier = Modifier
                     .weight(1f)
@@ -121,7 +121,7 @@ fun DriverLoaderScreen(
                 }
             }
 
-            // Card 2: SuperUser (Right)
+            // Card 2: SuperUser (Right - Interactive root authorization prompt)
             ElevatedCard(
                 modifier = Modifier
                     .weight(1f)
@@ -156,7 +156,7 @@ fun DriverLoaderScreen(
             }
         }
 
-        // 3. Simple Action Buttons: QX and RT (Borderless Material 3)
+        // 3. Simple Action Buttons: QX and RT (Opens Bottom Sheet Modal)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -164,9 +164,9 @@ fun DriverLoaderScreen(
             Button(
                 onClick = {
                     viewModel.prepareDrivers("QX") { matches ->
-                        dialogMode = "QX"
-                        dialogDrivers = matches
-                        showDriverDialog = true
+                        sheetMode = "QX"
+                        sheetDrivers = matches
+                        showDriverSheet = true
                     }
                 },
                 modifier = Modifier
@@ -187,9 +187,9 @@ fun DriverLoaderScreen(
             Button(
                 onClick = {
                     viewModel.prepareDrivers("RT") { matches ->
-                        dialogMode = "RT"
-                        dialogDrivers = matches
-                        showDriverDialog = true
+                        sheetMode = "RT"
+                        sheetDrivers = matches
+                        showDriverSheet = true
                     }
                 },
                 modifier = Modifier
@@ -305,77 +305,17 @@ fun DriverLoaderScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // 6. Official Android / Material 3 Dialog for Kernel Driver Selection
-    if (showDriverDialog) {
-        AlertDialog(
-            onDismissRequest = { showDriverDialog = false },
-            title = {
-                Text(
-                    text = "Select $dialogMode Driver",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                if (dialogDrivers.isEmpty()) {
-                    Text(
-                        text = "No matching drivers found for kernel ${state.kernelRelease}.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        dialogDrivers.forEach { file ->
-                            ElevatedCard(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showDriverDialog = false
-                                        viewModel.loadDriverScript(file)
-                                    },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.elevatedCardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                elevation = CardDefaults.cardElevation(0.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Build,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.size(12.dp))
-                                    Text(
-                                        text = file.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDriverDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            shape = RoundedCornerShape(20.dp),
-            containerColor = MaterialTheme.colorScheme.surface
+    // 6. Android Official Material 3 Bottom Sheet (Sliding from bottom with rounded corners and selection check)
+    if (showDriverSheet) {
+        DriverSelectionBottomSheet(
+            mode = sheetMode,
+            kernelRelease = state.kernelRelease,
+            drivers = sheetDrivers,
+            onDismissRequest = { showDriverSheet = false },
+            onDriverSelected = { selectedFile ->
+                showDriverSheet = false
+                viewModel.loadDriverScript(selectedFile)
+            }
         )
     }
 }

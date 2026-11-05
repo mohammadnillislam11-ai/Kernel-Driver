@@ -80,28 +80,23 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.1.0
-          name: "NINMODS Kernel Driver Loader v1.1.0 (Real APatch Architecture & Zero Dummy UI)"
+          tag: v1.1.1
+          name: "NINMODS Kernel Driver Loader v1.1.1 (Official Bottom Sheet Driver Selection)"
           body: |
-            ## NINMODS Official Release v1.1.0
+            ## NINMODS Official Release v1.1.1
+            - **Android Official Bottom Sheet Driver Selector**:
+              - QX and RT driver selection now opens an official Material 3 `ModalBottomSheet` sliding up from the bottom.
+              - Rounded top corners (`28.dp`), top drag handle, and item selection checkmark.
+              - Full-width "Load Driver" action button at the bottom.
             - **100% Real APatch System Integration**:
-              - Completely purged dummy setup screen; app launches straight into live workspace.
               - Live POSIX kernel detection (`Os.uname().release`).
               - Real root shell executor (`su` fallback to `/data/adb/ap/bin/su`, `/system/bin/su`, `/data/adb/magisk/su`).
               - Character device node detector inspecting active kernel driver nodes (`/dev/BYNb`, `/dev/mem_tool`, `/dev/nh`, `/dev/wanbai`).
             - **Interactive Status Cards**:
               - Tap SuperUser card to immediately trigger/re-verify root authorization.
               - Tap Kernel Driver card to refresh live device node states.
-            - **Settings Live Permissions**:
-              - Real Root Manager inspection (APatch, KernelSU, Magisk).
-              - Tap to request SuperUser or Storage permissions anytime.
             - **Live Digital License Countdown Clock**:
-              - Hours : Minutes : Seconds (`HH:MM:SS`) countdown ticker.
-            - **Official Material 3 Dialog & Driver Loading**:
-              - QX & RT buttons list matching kernel driver scripts with tap-to-load execution.
-              - Stop Driver button enabled strictly when driver is loaded.
-            - **Modular Clean Architecture**:
-              - Dedicated folders per screen (`loader`, `dashboard`, `settings`, `profile`, `login`, `signup`, `forgotpassword`, `clock`).
+              - Real-time digital clock in Hours : Minutes : Seconds (`HH:MM:SS`).
             - **Production Signed Release**:
               - Dedicated keystore `ninmods-release.jks` with R8 optimization.
           artifacts: "app/build/outputs/apk/release/*.apk"
