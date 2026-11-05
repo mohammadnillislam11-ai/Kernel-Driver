@@ -133,6 +133,32 @@ private fun LoginContent(
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
 
+    val performLogin: () -> Unit = {
+        focusManager.clearFocus()
+        if (email.trim().isEmpty() || password.trim().isEmpty()) {
+            errorMessage = "Please enter email and password"
+        } else {
+            isLoading = true
+            errorMessage = null
+            scope.launch {
+                val result = AuthApiClient.login(email.trim(), password.trim())
+                isLoading = false
+                if (result.isSuccess) {
+                    val auth = result.getOrThrow()
+                    onSuccess(
+                        auth.email.ifBlank { email.trim() },
+                        auth.username.ifBlank { email.substringBefore("@") },
+                        auth.apiKey,
+                        auth.activeLicense?.remainingSeconds,
+                        rememberMe
+                    )
+                } else {
+                    errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -234,12 +260,7 @@ private fun LoginContent(
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    focusManager.clearFocus()
-                    if (email.trim().isNotEmpty() && password.trim().isNotEmpty()) {
-                        onSuccess(email.trim(), email.substringBefore("@"), rememberMe)
-                    } else {
-                        errorMessage = "Please enter email and password"
-                    }
+                    performLogin()
                 }
             ),
             shape = RoundedCornerShape(20.dp),
@@ -300,32 +321,7 @@ private fun LoginContent(
 
         // Login Button
         Button(
-            onClick = {
-                focusManager.clearFocus()
-                if (email.trim().isEmpty() || password.trim().isEmpty()) {
-                    errorMessage = "Please enter email and password"
-                    return@Button
-                }
-
-                isLoading = true
-                errorMessage = null
-                scope.launch {
-                    val result = AuthApiClient.login(email.trim(), password.trim())
-                    isLoading = false
-                    if (result.isSuccess) {
-                        val auth = result.getOrThrow()
-                        onSuccess(
-                            auth.email.ifBlank { email.trim() },
-                            auth.username.ifBlank { email.substringBefore("@") },
-                            auth.apiKey,
-                            auth.activeLicense?.remainingSeconds,
-                            rememberMe
-                        )
-                    } else {
-                        errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
-                    }
-                }
-            },
+            onClick = { performLogin() },
             enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()

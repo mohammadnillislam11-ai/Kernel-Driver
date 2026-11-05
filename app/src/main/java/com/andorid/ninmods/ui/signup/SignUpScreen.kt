@@ -75,6 +75,35 @@ fun SignUpScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    val performSignUp: () -> Unit = {
+        focusManager.clearFocus()
+        when {
+            fullName.trim().isEmpty() -> errorMessage = "Username is required"
+            email.trim().isEmpty() -> errorMessage = "Email is required"
+            password.length < 6 -> errorMessage = "Password must be at least 6 characters"
+            password != rePassword -> errorMessage = "Passwords do not match"
+            else -> {
+                isLoading = true
+                errorMessage = null
+                scope.launch {
+                    val result = AuthApiClient.signup(
+                        username = fullName.trim(),
+                        email = email.trim(),
+                        password = password.trim(),
+                        passwordAgain = rePassword.trim()
+                    )
+                    isLoading = false
+                    if (result.isSuccess) {
+                        Toast.makeText(context, "Account created successfully! Please login.", Toast.LENGTH_LONG).show()
+                        onNavigateToLogin()
+                    } else {
+                        errorMessage = result.exceptionOrNull()?.message ?: "Sign up failed"
+                    }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -253,10 +282,7 @@ fun SignUpScreen(
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    focusManager.clearFocus()
-                    validateAndSubmit(fullName, email, password, rePassword, onError = { errorMessage = it }) {
-                        onSuccess(email.trim(), fullName.trim(), true)
-                    }
+                    performSignUp()
                 }
             ),
             shape = RoundedCornerShape(20.dp),
@@ -284,34 +310,7 @@ fun SignUpScreen(
 
         // Sign Up Button
         Button(
-            onClick = {
-                focusManager.clearFocus()
-                when {
-                    fullName.trim().isEmpty() -> errorMessage = "Username is required"
-                    email.trim().isEmpty() -> errorMessage = "Email is required"
-                    password.length < 6 -> errorMessage = "Password must be at least 6 characters"
-                    password != rePassword -> errorMessage = "Passwords do not match"
-                    else -> {
-                        isLoading = true
-                        errorMessage = null
-                        scope.launch {
-                            val result = AuthApiClient.signup(
-                                username = fullName.trim(),
-                                email = email.trim(),
-                                password = password.trim(),
-                                passwordAgain = rePassword.trim()
-                            )
-                            isLoading = false
-                            if (result.isSuccess) {
-                                Toast.makeText(context, "Account created successfully! Please login.", Toast.LENGTH_LONG).show()
-                                onNavigateToLogin()
-                            } else {
-                                errorMessage = result.exceptionOrNull()?.message ?: "Sign up failed"
-                            }
-                        }
-                    }
-                }
-            },
+            onClick = { performSignUp() },
             enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
@@ -359,22 +358,5 @@ fun SignUpScreen(
                 )
             }
         }
-    }
-}
-
-private fun validateAndSubmit(
-    name: String,
-    email: String,
-    pass: String,
-    rePass: String,
-    onError: (String) -> Unit,
-    onSuccess: () -> Unit
-) {
-    when {
-        name.trim().isEmpty() -> onError("Full name is required")
-        email.trim().isEmpty() -> onError("Email is required")
-        pass.trim().isEmpty() -> onError("Password is required")
-        pass != rePass -> onError("Passwords do not match")
-        else -> onSuccess()
     }
 }
