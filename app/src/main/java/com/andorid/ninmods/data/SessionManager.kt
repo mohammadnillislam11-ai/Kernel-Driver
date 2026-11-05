@@ -11,6 +11,8 @@ class SessionManager(context: Context) {
         private const val PREF_NAME = "ninmods_auth_session"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_AUTH_TOKEN = "auth_token"
+        private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_USER_NAME = "user_name"
         private const val KEY_REMEMBER = "remember_login"
     }
 
@@ -21,6 +23,14 @@ class SessionManager(context: Context) {
     var authToken: String?
         get() = prefs.getString(KEY_AUTH_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_AUTH_TOKEN, value).apply()
+
+    var userEmail: String?
+        get() = prefs.getString(KEY_USER_EMAIL, "user@ninmods.dev")
+        set(value) = prefs.edit().putString(KEY_USER_EMAIL, value).apply()
+
+    var userName: String?
+        get() = prefs.getString(KEY_USER_NAME, "NinMods User")
+        set(value) = prefs.edit().putString(KEY_USER_NAME, value).apply()
 
     var rememberLogin: Boolean
         get() = prefs.getBoolean(KEY_REMEMBER, true)

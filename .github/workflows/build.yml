@@ -80,16 +80,18 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.5
-          name: "NINMODS Kernel Driver Loader v1.0.5 (Production Final)"
+          tag: v1.0.6
+          name: "NINMODS Kernel Driver Loader v1.0.6 (Official Release)"
           body: |
-            ## NINMODS Production Final Release v1.0.5
-            - **Production Signed**: Dedicated release keystore (RSA 2048) configured.
-            - **Official Components**: Android MaterialAlertDialog for QX and RT matching drivers.
-            - **Official Platform Transitions**: Built-in Android framework fade transitions.
-            - **Borderless APatch UI**: 0dp borders on cards and buttons with surface background.
+            ## NINMODS Official Release v1.0.6
+            - **Complete Authentication Flow**:
+              - Login: Email & Password, Remember checkbox (left), Forgot Password (right).
+              - Sign Up: Full Name, Email, Password, Re-enter Password.
+              - Forgot Password: Email recovery screen.
+            - **Top-Right Profile Screen**: User profile page showing name, email, session token, and logout.
+            - **Production Signed**: Dedicated release keystore (RSA 2048).
+            - **Official Components & Transitions**: Android MaterialAlertDialog and framework fade transitions.
             - **Google Obfuscator**: R8 and ProGuard optimizations enabled.
-            - **Google Code Obfuscator**: Active R8 minification.
           artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true
           replacesArtifacts: true

@@ -13,6 +13,7 @@ import com.andorid.ninmods.R
 import com.andorid.ninmods.databinding.ActivityMainBinding
 import com.andorid.ninmods.ui.dashboard.DashboardFragment
 import com.andorid.ninmods.ui.home.HomeFragment
+import com.andorid.ninmods.ui.profile.ProfileFragment
 import com.andorid.ninmods.ui.settings.SettingsFragment
 
 class MainActivity : AppCompatActivity() {
@@ -37,6 +38,21 @@ class MainActivity : AppCompatActivity() {
         binding.tabDashboard.setOnClickListener { selectTab(0) }
         binding.tabLoader.setOnClickListener { selectTab(1) }
         binding.tabSettings.setOnClickListener { selectTab(2) }
+        binding.btnTopProfile.setOnClickListener { openProfile() }
+    }
+
+    private fun openProfile() {
+        if (currentTabIndex == 3) return
+        currentTabIndex = 3
+
+        updateTabState(binding.tabDashboard, binding.iconDashboard, false)
+        updateTabState(binding.tabLoader, binding.iconLoader, false)
+        updateTabState(binding.tabSettings, binding.iconSettings, false)
+
+        supportFragmentManager.beginTransaction()
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+            .replace(R.id.fragmentContainer, ProfileFragment())
+            .commit()
     }
 
     private fun selectTab(index: Int) {

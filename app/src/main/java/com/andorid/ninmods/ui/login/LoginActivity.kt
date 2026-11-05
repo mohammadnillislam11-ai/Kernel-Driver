@@ -26,12 +26,14 @@ class LoginActivity : ComponentActivity() {
 
         // Render Pure APatch Jetpack Compose Login Screen
         setContent {
-            APatchLoginScreen { token, remember ->
+            APatchLoginScreen { email, name, remember ->
                 sessionManager.isLoggedIn = true
-                sessionManager.authToken = token
+                sessionManager.userEmail = email
+                sessionManager.userName = name
+                sessionManager.authToken = "nin_${System.currentTimeMillis()}"
                 sessionManager.rememberLogin = remember
 
-                Toast.makeText(this, "Authentication verified. Access granted.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
                 navigateToMain()
             }
         }
