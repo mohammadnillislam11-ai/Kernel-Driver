@@ -24,26 +24,17 @@ class DriverRepository(private val context: Context) {
 
         try {
             onProgress("Extracting kernel driver archives...")
-            val inputStream = context.assets.open("Kernel_Drivers.zip")
-            val zipInputStream = ZipInputStream(inputStream)
-            var entry = zipInputStream.nextEntry
-
-            while (entry != null) {
-                val outFile = File(driversDir, entry.name)
-                if (entry.isDirectory) {
-                    outFile.mkdirs()
-                } else {
-                    outFile.parentFile?.mkdirs()
-                    FileOutputStream(outFile).use { fos ->
-                        zipInputStream.copyTo(fos)
-                    }
-                    outFile.setExecutable(true, false)
-                    outFile.setReadable(true, false)
-                }
-                zipInputStream.closeEntry()
-                entry = zipInputStream.nextEntry
+            
+            // Extract primary Kernel_Drivers.zip
+            extractZipAsset("Kernel_Drivers.zip")
+            
+            // Extract master Kernel_Drivers_Master.zip if available
+            try {
+                extractZipAsset("Kernel_Drivers_Master.zip")
+            } catch (me: Exception) {
+                // Optional master zip failure is non-fatal
             }
-            zipInputStream.close()
+
             marker.createNewFile()
             onProgress("Extraction complete.")
             true
@@ -51,6 +42,30 @@ class DriverRepository(private val context: Context) {
             onProgress("Extraction failed: ${e.message}")
             false
         }
+    }
+
+    private fun extractZipAsset(assetName: String) {
+        val inputStream = context.assets.open(assetName)
+        val zipInputStream = ZipInputStream(inputStream)
+        var entry = zipInputStream.nextEntry
+
+        while (entry != null) {
+            val outFile = File(driversDir, entry.name)
+            if (entry.isDirectory) {
+                outFile.mkdirs()
+            } else {
+                outFile.parentFile?.mkdirs()
+                FileOutputStream(outFile).use { fos ->
+                    zipInputStream.copyTo(fos)
+                }
+                outFile.setExecutable(true, false)
+                outFile.setReadable(true, false)
+            }
+            zipInputStream.closeEntry()
+            entry = zipInputStream.nextEntry
+        }
+        zipInputStream.close()
+    }
     }
 
     /**
