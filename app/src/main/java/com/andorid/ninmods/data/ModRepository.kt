@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 data class ModItem(
     val id: String,
@@ -29,9 +28,9 @@ data class ModItem(
 )
 
 /**
- * Official Mod Repository managing two distinct modular environments:
- * - kernel_mods: Kernel-level hooks, bypasses, and drivers
- * - external_mods: External overlays, injectors, and floating controls
+ * Pure Mod Scanner & Executor for User Scripts (.sh):
+ * Discovers user mods from dedicated kernel_mods and external_mods directories.
+ * Zero dummy/fake files generated.
  */
 class ModRepository(private val context: Context) {
 
@@ -59,99 +58,47 @@ class ModRepository(private val context: Context) {
             null
         }
 
+    val rootTmpKernelModsDir: File
+        get() = File("/data/local/tmp/ninmods/kernel_mods")
+
+    val rootTmpExternalModsDir: File
+        get() = File("/data/local/tmp/ninmods/external_mods")
+
     init {
-        initializeFolders()
+        ensureFoldersExist()
     }
 
-    fun initializeFolders() {
+    fun ensureFoldersExist() {
         try {
             kernelModsDir.mkdirs()
             externalModsDir.mkdirs()
             sdcardKernelModsDir?.mkdirs()
             sdcardExternalModsDir?.mkdirs()
-
-            // Seed starter kernel mods if directory has no files
-            val currentKernelFiles = kernelModsDir.listFiles()?.filter { !it.name.startsWith(".") }
-            if (currentKernelFiles.isNullOrEmpty()) {
-                seedDefaultKernelMods()
-            }
-
-            // Seed starter external mods if directory has no files
-            val currentExternalFiles = externalModsDir.listFiles()?.filter { !it.name.startsWith(".") }
-            if (currentExternalFiles.isNullOrEmpty()) {
-                seedDefaultExternalMods()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun seedDefaultKernelMods() {
-        createScript(
-            folder = kernelModsDir,
-            fileName = "engine.sh",
-            content = "#!/system/bin/sh\n# NinMods Kernel Engine Service\necho \"[Kernel Engine] Initializing memory hooks...\"\nexit 0\n"
-        )
-        createScript(
-            folder = kernelModsDir,
-            fileName = "bypass.sh",
-            content = "#!/system/bin/sh\n# NinMods Kernel Bypass Service\necho \"[Kernel Bypass] Applying SELinux and integrity bypass...\"\nexit 0\n"
-        )
-        createScript(
-            folder = kernelModsDir,
-            fileName = "hook.sh",
-            content = "#!/system/bin/sh\n# NinMods Syscall Hook Service\necho \"[Syscall Hook] Routing system hooks...\"\nexit 0\n"
-        )
-    }
-
-    private fun seedDefaultExternalMods() {
-        createScript(
-            folder = externalModsDir,
-            fileName = "injector.sh",
-            content = "#!/system/bin/sh\n# NinMods Overlay Injector\necho \"[Injector] Injecting visual overlay...\"\nexit 0\n"
-        )
-        createScript(
-            folder = externalModsDir,
-            fileName = "floating_menu.sh",
-            content = "#!/system/bin/sh\n# NinMods Floating Menu\necho \"[Floating Menu] Activating floating window...\"\nexit 0\n"
-        )
-        createScript(
-            folder = externalModsDir,
-            fileName = "aim_assist.sh",
-            content = "#!/system/bin/sh\n# NinMods Aim Assist\necho \"[Aim Assist] Calibrating touch sensors...\"\nexit 0\n"
-        )
-    }
-
-    private fun createScript(folder: File, fileName: String, content: String) {
-        try {
-            val file = File(folder, fileName)
-            if (!file.exists()) {
-                FileOutputStream(file).use { it.write(content.toByteArray()) }
-                file.setExecutable(true, false)
-                file.setReadable(true, false)
-            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     suspend fun loadKernelMods(): List<ModItem> = withContext(Dispatchers.IO) {
-        scanFolder(kernelModsDir, "kernel_mods")
+        scanFolder("kernel_mods", listOfNotNull(kernelModsDir, sdcardKernelModsDir, rootTmpKernelModsDir))
     }
 
     suspend fun loadExternalMods(): List<ModItem> = withContext(Dispatchers.IO) {
-        scanFolder(externalModsDir, "external_mods")
+        scanFolder("external_mods", listOfNotNull(externalModsDir, sdcardExternalModsDir, rootTmpExternalModsDir))
     }
 
-    private fun scanFolder(folder: File, folderName: String): List<ModItem> {
-        val files = folder.listFiles()?.filter { !it.name.startsWith(".") } ?: emptyList()
+    private fun scanFolder(folderName: String, directories: List<File>): List<ModItem> {
+        val collectedFiles = mutableListOf<File>()
 
-        val sdcardFolder = if (folderName == "kernel_mods") sdcardKernelModsDir else sdcardExternalModsDir
-        val sdcardFiles = sdcardFolder?.listFiles()?.filter { !it.name.startsWith(".") } ?: emptyList()
+        for (dir in directories) {
+            if (dir.exists() && dir.isDirectory) {
+                dir.listFiles()?.filter { f ->
+                    f.isFile && !f.name.startsWith(".")
+                }?.let { collectedFiles.addAll(it) }
+            }
+        }
 
-        val allFiles = (files + sdcardFiles).distinctBy { it.name }
-
-        return allFiles.map { file ->
+        return collectedFiles.distinctBy { it.name }.map { file ->
             ModItem(
                 id = "${folderName}_${file.name}",
                 name = formatModName(file.name),

@@ -248,7 +248,7 @@ private fun ModSectionCard(
                     color = MaterialTheme.colorScheme.surface
                 ) {
                     Text(
-                        text = "No mods found in $folderBadge\nDrop scripts (.sh) or packages into folder.",
+                        text = "No mods found in $folderBadge\nPlace your .sh mod files in this folder.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
