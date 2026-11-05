@@ -62,6 +62,7 @@ fun SignUpScreen(
     var password by remember { mutableStateOf("") }
     var rePassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var rePasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
 
@@ -230,7 +231,13 @@ fun SignUpScreen(
                     tint = MaterialTheme.colorScheme.primary
                 )
             },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                val icon = if (rePasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                IconButton(onClick = { rePasswordVisible = !rePasswordVisible }) {
+                    Icon(imageVector = icon, contentDescription = "Toggle Visibility")
+                }
+            },
+            visualTransformation = if (rePasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done

@@ -44,19 +44,9 @@ jobs:
 
       - name: Build with Gradle
         run: |
+          set -o pipefail
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log || gradle clean assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
-
-      - name: Push Build Log to Debug Branch
-        if: always()
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git checkout -B build-logs
-          cp build.log latest-build.log
-          git add latest-build.log
-          git commit -m "chore: record build.log" || true
-          git push -f origin build-logs
+          ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
 
       - name: Check Build Status
         run: |
@@ -66,6 +56,13 @@ jobs:
           fi
           echo "SUCCESS: Found APK:"
           ls -lh app/build/outputs/apk/release/*.apk
+
+      - name: Upload Build Log Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Upload Release Artifact
         if: success()
