@@ -51,13 +51,6 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
-
-    applicationVariants.all {
-        outputs.all {
-            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output?.outputFileName = "NINMODS-DriverLoader-v1.0.0-${name}.apk"
-        }
-    }
 }
 
 dependencies {
