@@ -26,6 +26,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
@@ -43,7 +45,7 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace --no-daemon > build.log 2>&1 || true
+          ./gradlew clean assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log || gradle clean assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log
 
       - name: Push Build Log to Debug Branch
         if: always()
@@ -58,10 +60,12 @@ jobs:
 
       - name: Check Build Status
         run: |
-          if grep -q "BUILD FAILED" build.log; then
-            echo "Gradle build failed! Log pushed to build-logs branch."
+          if ! ls app/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
+            echo "ERROR: Release APK was not generated!"
             exit 1
           fi
+          echo "SUCCESS: Found APK:"
+          ls -lh app/build/outputs/apk/release/*.apk
 
       - name: Upload Release Artifact
         if: success()
