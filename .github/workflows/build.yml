@@ -63,13 +63,13 @@ jobs:
 
       - name: Publish to GitHub Releases
         if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-          echo "Found release APK: $APK_PATH"
-          cp "$APK_PATH" NINMODS-DriverLoader-v1.0.0.apk
-          gh release upload v1.0.0 NINMODS-DriverLoader-v1.0.0.apk --clobber || \
-          gh release create v1.0.0 NINMODS-DriverLoader-v1.0.0.apk \
-            --title "NINMODS Kernel Driver Loader v1.0.0" \
-            --notes "Official Release v1.0.0: Built with Google R8/ProGuard Obfuscator, APatch UI architecture, and 410+ Master Kernel Drivers."
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: v1.0.0
+          name: "NINMODS Kernel Driver Loader v1.0.0"
+          body: "Official Release v1.0.0: Protected with Google R8/ProGuard Obfuscator, official APatch Jetpack Compose UI architecture, and 410+ Master Kernel Drivers."
+          artifacts: "app/build/outputs/apk/release/*.apk"
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
