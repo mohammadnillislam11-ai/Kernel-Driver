@@ -62,23 +62,14 @@ jobs:
           retention-days: 14
 
       - name: Publish to GitHub Releases
-        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0
-          name: "NINMODS Kernel Driver Loader v1.0.0"
-          body: |
-            ## NINMODS Official Release v1.0.0
-            
-            ### Features:
-            - **Google Official Code Obfuscator**: R8 & ProGuard enabled with class repackaging and code optimization.
-            - **Master Drivers**: 410+ Kernel Objects integrated (`.ko.sh` / `.sh` auto-dispatcher for QX & RT).
-            - **APatch UI Architecture**: Official APatch Jetpack Compose theme, WarningCard, and floating capsule bottom bar.
-            - **Authentication**: APatch official structure Login Page with SuperUser security verification.
-            - **Package**: `com.andorid.ninmods`
-          files: app/build/outputs/apk/release/*.apk
-          draft: false
-          prerelease: false
-          make_latest: true
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          echo "Found release APK: $APK_PATH"
+          cp "$APK_PATH" NINMODS-DriverLoader-v1.0.0.apk
+          gh release upload v1.0.0 NINMODS-DriverLoader-v1.0.0.apk --clobber || \
+          gh release create v1.0.0 NINMODS-DriverLoader-v1.0.0.apk \
+            --title "NINMODS Kernel Driver Loader v1.0.0" \
+            --notes "Official Release v1.0.0: Built with Google R8/ProGuard Obfuscator, APatch UI architecture, and 410+ Master Kernel Drivers."
