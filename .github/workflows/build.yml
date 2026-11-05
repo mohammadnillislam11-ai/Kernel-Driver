@@ -80,23 +80,33 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.7
-          name: "NINMODS Kernel Driver Loader v1.0.7 (Official Release)"
+          tag: v1.0.8
+          name: "NINMODS Kernel Driver Loader v1.0.8 (Official APatch Pure Architecture)"
           body: |
-            ## NINMODS Official Release v1.0.7
-            - **First-Run Setup & Permission Workflow**:
-              - Automatically detects installed Root Manager (APatch, KernelSU, Magisk, SuperUser).
-              - Official SuperUser root prompt call.
-              - Official Android storage permission request.
-              - Animated dots installation indicator (`Install • • •`).
-              - Real asynchronous environment extraction without fake timers.
-            - **Complete Authentication Flow**:
-              - Login: Email & Password, Remember checkbox (left), Forgot Password (right).
-              - Sign Up: Full Name, Email, Password, Re-enter Password.
-              - Forgot Password: Email recovery screen.
-            - **Top-Right Profile Screen**: User profile page showing name, email, session token, and logout.
-            - **Production Signed**: Dedicated release keystore (RSA 2048).
-            - **Google Obfuscator**: R8 and ProGuard optimizations enabled.
+            ## NINMODS Official Release v1.0.8 (Official APatch Architecture)
+            - **100% Pure APatch Jetpack Compose Architecture**:
+              - Completely purged legacy XML layouts and Fragment managers.
+              - Material 3 `Scaffold` and single-line `TopAppBar` with all subtitle clutter removed.
+              - Official Material 3 `NavigationBar(tonalElevation = 8.dp)` with `alwaysShowLabel = false` matching APatch.
+              - Official borderless `ElevatedCard` (`elevation = 0.dp`, `shape = RoundedCornerShape(20.dp)`) across all screens.
+            - **Digital License Countdown Clock**:
+              - Real-time digital clock countdown in Hours : Minutes : Seconds (`HH:MM:SS`) on Driver Loader, Dashboard, and Profile.
+            - **Simplified Status Cards**:
+              - Status cards cleanly display "Not Loaded" / "Working" and "Granted" / "Denied" without text clutter.
+            - **Modular Screen Architecture**:
+              - Individual dedicated folders for every screen (`login`, `signup`, `forgotpassword`, `dashboard`, `loader`, `settings`, `profile`, `setup`, `clock`).
+            - **Kernel Driver Selection Dialog**:
+              - Official Material 3 Dialog on QX / RT clicks listing kernel-matched drivers.
+              - "Stop Driver" button enabled strictly when a driver is active.
+            - **Dashboard Screen**:
+              - 4 apps side-by-side quick launcher (Free Fire, FF MAX, Engine, Injector).
+            - **Settings & Profile**:
+              - Official APatch `SwitchItem` components (Global Namespace, Legacy su).
+              - Community Telegram link (`@ninmods`).
+              - Profile screen with user information and secure session sign out.
+            - **Production Signed Release**:
+              - Production keystore `ninmods-release.jks`.
+              - Obfuscation and optimization via R8/ProGuard.
           artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true
           replacesArtifacts: true

@@ -11,8 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.MainActivity
-import com.andorid.ninmods.ui.compose.APatchLoginScreen
-import com.andorid.ninmods.ui.compose.SetupScreen
+import com.andorid.ninmods.ui.setup.SetupScreen
 
 class LoginActivity : ComponentActivity() {
 
@@ -38,7 +37,7 @@ class LoginActivity : ComponentActivity() {
                     isSetupDone = true
                 }
             } else {
-                APatchLoginScreen { email, name, remember ->
+                LoginScreen { email, name, remember ->
                     sessionManager.isLoggedIn = true
                     sessionManager.userEmail = email
                     sessionManager.userName = name

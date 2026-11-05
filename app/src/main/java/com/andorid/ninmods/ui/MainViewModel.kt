@@ -91,14 +91,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val kernel = _uiState.value.kernelRelease
             appendLog("[LOADER] Finding drivers for $mode mode matching kernel $kernel...")
             val matches = repository.findMatchingDrivers(kernel, mode)
-            if (matches.isEmpty()) {
-                appendLog("[ERROR] No matching driver scripts found for $mode mode!")
-            } else if (matches.size == 1) {
-                loadDriverScript(matches.first())
-            } else {
-                appendLog("[SELECT] Multiple compatible drivers found (${matches.size}). Select one:")
-                onSelectionRequired(matches)
-            }
+            appendLog("[SELECT] ${matches.size} drivers found. Presenting selection dialog.")
+            onSelectionRequired(matches)
         }
     }
 

@@ -1,4 +1,4 @@
-package com.andorid.ninmods.ui.compose
+package com.andorid.ninmods.ui.setup
 
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,7 +33,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -79,7 +78,6 @@ fun SetupScreen(
     var isInstalling by remember { mutableStateOf(false) }
     var installStatus by remember { mutableStateOf("Preparing environment") }
 
-    // Official Android Storage Permission Launcher
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -87,14 +85,12 @@ fun SetupScreen(
         isStorageGranted = true
     }
 
-    // Step 1: Detect Root Manager on entry
     LaunchedEffect(Unit) {
         val info = withContext(Dispatchers.IO) {
             RootDetector.detect(context)
         }
         rootManager = info.managerName
 
-        // Step 2: Trigger official SuperUser Root Call
         val granted = withContext(Dispatchers.IO) {
             try {
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
@@ -106,7 +102,6 @@ fun SetupScreen(
         }
         isSuperUserGranted = granted
 
-        // Step 3: Check & Request Storage Permission
         storagePermissionLauncher.launch(
             arrayOf(
                 android.Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -115,7 +110,6 @@ fun SetupScreen(
         )
     }
 
-    // Step 4 & 5: When all permissions granted, perform real installation (zero fake timers!)
     LaunchedEffect(isSuperUserGranted, isStorageGranted) {
         if (isSuperUserGranted && isStorageGranted && !isInstalling) {
             isInstalling = true
@@ -123,7 +117,6 @@ fun SetupScreen(
                 repository.extractDriversIfNeeded { progress ->
                     installStatus = progress
                 }
-                // Genuine completion callback
                 withContext(Dispatchers.Main) {
                     onSetupComplete()
                 }
@@ -143,7 +136,6 @@ fun SetupScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // App Logo
                 Surface(
                     shape = RoundedCornerShape(22.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -171,7 +163,6 @@ fun SetupScreen(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Card 1: Root Manager Detection
                 PermissionStatusCard(
                     icon = Icons.Default.Security,
                     title = "Root Manager",
@@ -181,7 +172,6 @@ fun SetupScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Card 2: SuperUser Call
                 PermissionStatusCard(
                     icon = Icons.Default.VpnKey,
                     title = "SuperUser Access",
@@ -191,7 +181,6 @@ fun SetupScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Card 3: Storage Permission
                 PermissionStatusCard(
                     icon = Icons.Default.Folder,
                     title = "Storage Access",
@@ -201,7 +190,6 @@ fun SetupScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Step 4: Install with Animated Dots (Zero Fake Timers)
                 if (isInstalling) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -224,7 +212,6 @@ fun SetupScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (!isSuperUserGranted) {
-                    // Retry SuperUser Request Button
                     Button(
                         onClick = {
                             scope.launch(Dispatchers.IO) {
@@ -237,7 +224,6 @@ fun SetupScreen(
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    // Root request denied or failed
                                 }
                             }
                         },

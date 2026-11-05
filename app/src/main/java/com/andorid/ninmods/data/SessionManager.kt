@@ -15,7 +15,20 @@ class SessionManager(context: Context) {
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_REMEMBER = "remember_login"
+        private const val KEY_LICENSE_EXPIRY = "license_expiry_time"
     }
+
+    var licenseExpiryMillis: Long
+        get() {
+            var exp = prefs.getLong(KEY_LICENSE_EXPIRY, 0L)
+            if (exp == 0L) {
+                // Default 24 hours license expiration from first session initialization
+                exp = System.currentTimeMillis() + (24 * 60 * 60 * 1000L)
+                prefs.edit().putLong(KEY_LICENSE_EXPIRY, exp).apply()
+            }
+            return exp
+        }
+        set(value) = prefs.edit().putLong(KEY_LICENSE_EXPIRY, value).apply()
 
     var isEnvironmentSetup: Boolean
         get() = prefs.getBoolean(KEY_IS_SETUP, false)
