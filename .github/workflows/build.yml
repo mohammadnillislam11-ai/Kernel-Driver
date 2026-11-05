@@ -43,10 +43,23 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace --no-daemon 2>&1 | tee build.log || true
-          echo "=== LAST 120 LINES OF BUILD LOG ==="
-          tail -n 120 build.log
+          ./gradlew clean assembleRelease --stacktrace --no-daemon > build.log 2>&1 || true
+
+      - name: Push Build Log to Debug Branch
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -B build-logs
+          cp build.log latest-build.log
+          git add latest-build.log
+          git commit -m "chore: record build.log" || true
+          git push -f origin build-logs
+
+      - name: Check Build Status
+        run: |
           if grep -q "BUILD FAILED" build.log; then
+            echo "Gradle build failed! Log pushed to build-logs branch."
             exit 1
           fi
 
