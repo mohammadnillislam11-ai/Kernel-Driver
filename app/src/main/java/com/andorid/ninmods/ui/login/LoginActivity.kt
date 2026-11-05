@@ -5,13 +5,8 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.MainActivity
-import com.andorid.ninmods.ui.setup.SetupScreen
 
 class LoginActivity : ComponentActivity() {
 
@@ -22,31 +17,22 @@ class LoginActivity : ComponentActivity() {
 
         sessionManager = SessionManager(this)
 
-        // If user already authenticated and remember session is on, navigate to MainActivity
-        if (sessionManager.isEnvironmentSetup && sessionManager.isLoggedIn && sessionManager.rememberLogin) {
+        // If user already authenticated and remember session is on, navigate straight to MainActivity
+        if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
             navigateToMain()
             return
         }
 
         setContent {
-            var isSetupDone by remember { mutableStateOf(sessionManager.isEnvironmentSetup) }
+            LoginScreen { email, name, remember ->
+                sessionManager.isLoggedIn = true
+                sessionManager.userEmail = email
+                sessionManager.userName = name
+                sessionManager.authToken = "nin_${System.currentTimeMillis()}"
+                sessionManager.rememberLogin = remember
 
-            if (!isSetupDone) {
-                SetupScreen {
-                    sessionManager.isEnvironmentSetup = true
-                    isSetupDone = true
-                }
-            } else {
-                LoginScreen { email, name, remember ->
-                    sessionManager.isLoggedIn = true
-                    sessionManager.userEmail = email
-                    sessionManager.userName = name
-                    sessionManager.authToken = "nin_${System.currentTimeMillis()}"
-                    sessionManager.rememberLogin = remember
-
-                    Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
-                    navigateToMain()
-                }
+                Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
+                navigateToMain()
             }
         }
     }
