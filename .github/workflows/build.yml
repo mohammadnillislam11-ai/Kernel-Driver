@@ -29,10 +29,10 @@ jobs:
         with:
           packages: ''
 
-      - name: Accept Licenses & Set SDK Path
+      - name: Clean Local Properties & Accept Licenses
         run: |
+          rm -f local.properties
           yes | sdkmanager --licenses || true
-          echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -40,9 +40,18 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew clean assembleRelease --stacktrace > build.log 2>&1 || (tail -n 150 build.log && exit 1)
+          ./gradlew clean assembleRelease --stacktrace 2>&1 | tee build.log
+
+      - name: Upload Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
 
       - name: Upload Release APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DriverLoader-Release
