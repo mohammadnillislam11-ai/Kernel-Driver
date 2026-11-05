@@ -49,11 +49,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.andorid.ninmods.data.SessionManager
+import com.andorid.ninmods.data.ShellExecutor
 import com.andorid.ninmods.ui.component.SwitchItem
 import com.andorid.ninmods.ui.dialogs.AppSelectionBottomSheet
 import com.andorid.ninmods.ui.dialogs.SheetItem
 import com.andorid.ninmods.util.RootDetector
-import com.andorid.ninmods.util.ShellExecutor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

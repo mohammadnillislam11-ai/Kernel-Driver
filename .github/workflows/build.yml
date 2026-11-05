@@ -80,23 +80,22 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.1.2
-          name: "NINMODS Kernel Driver Loader v1.1.2 (Universal Reusable Bottom Sheet Architecture)"
+          tag: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.1.4' }}
+          name: "NINMODS Official Release ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.1.4' }}"
           body: |
-            ## NINMODS Official Release v1.1.2
-            - **Universal Reusable Bottom Sheet (`ui/dialogs/`)**:
-              - Created generic `AppSelectionBottomSheet<T>` and `AppCustomBottomSheet` in `com.andorid.ninmods.ui.dialogs`.
-              - Reusable across ANY screen for drivers, account switcher, confirmations, and lists.
-              - Material 3 `ModalBottomSheet` sliding up from bottom with rounded top (`28.dp`), drag handle, selection radio checkmark, and full-width action button.
+            ## NINMODS Official Release
+            - **APatch Official UI & System Standard**:
+              - 1:1 APatch Official `SwitchItem` component with `toggleable` and `interactionSource` (zero custom code).
+              - Modern rounded navigation bar with `28.dp` top corners.
+              - Reusable `AppSelectionBottomSheet` in `ui/dialogs/` used across Driver Loader and Settings reboot menu.
+              - Complete removal of artificial placeholders/emails; only authentic session identity is shown.
             - **100% Real APatch System Integration**:
               - Live POSIX kernel detection (`Os.uname().release`).
               - Real root shell executor (`su` fallback to `/data/adb/ap/bin/su`, `/system/bin/su`, `/data/adb/magisk/su`).
               - Character device node detector inspecting active kernel driver nodes (`/dev/BYNb`, `/dev/mem_tool`, `/dev/nh`, `/dev/wanbai`).
-            - **Interactive Status Cards**:
-              - Tap SuperUser card to immediately trigger/re-verify root authorization.
-              - Tap Kernel Driver card to refresh live device node states.
-            - **Live Digital License Countdown Clock**:
-              - Real-time digital clock in Hours : Minutes : Seconds (`HH:MM:SS`).
+            - **Interactive Status Cards & Digital Clock**:
+              - Live license countdown clock (`HH:MM:SS`).
+              - SuperUser and Driver status cards.
             - **Production Signed Release**:
               - Dedicated keystore `ninmods-release.jks` with R8 optimization.
           artifacts: "app/build/outputs/apk/release/*.apk"
