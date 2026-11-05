@@ -80,17 +80,22 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.6
-          name: "NINMODS Kernel Driver Loader v1.0.6 (Official Release)"
+          tag: v1.0.7
+          name: "NINMODS Kernel Driver Loader v1.0.7 (Official Release)"
           body: |
-            ## NINMODS Official Release v1.0.6
+            ## NINMODS Official Release v1.0.7
+            - **First-Run Setup & Permission Workflow**:
+              - Automatically detects installed Root Manager (APatch, KernelSU, Magisk, SuperUser).
+              - Official SuperUser root prompt call.
+              - Official Android storage permission request.
+              - Animated dots installation indicator (`Install • • •`).
+              - Real asynchronous environment extraction without fake timers.
             - **Complete Authentication Flow**:
               - Login: Email & Password, Remember checkbox (left), Forgot Password (right).
               - Sign Up: Full Name, Email, Password, Re-enter Password.
               - Forgot Password: Email recovery screen.
             - **Top-Right Profile Screen**: User profile page showing name, email, session token, and logout.
             - **Production Signed**: Dedicated release keystore (RSA 2048).
-            - **Official Components & Transitions**: Android MaterialAlertDialog and framework fade transitions.
             - **Google Obfuscator**: R8 and ProGuard optimizations enabled.
           artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true

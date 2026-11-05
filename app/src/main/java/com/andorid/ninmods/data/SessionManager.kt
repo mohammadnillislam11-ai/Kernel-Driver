@@ -9,12 +9,17 @@ class SessionManager(context: Context) {
 
     companion object {
         private const val PREF_NAME = "ninmods_auth_session"
+        private const val KEY_IS_SETUP = "is_environment_setup"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_REMEMBER = "remember_login"
     }
+
+    var isEnvironmentSetup: Boolean
+        get() = prefs.getBoolean(KEY_IS_SETUP, false)
+        set(value) = prefs.edit().putBoolean(KEY_IS_SETUP, value).apply()
 
     var isLoggedIn: Boolean
         get() = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
@@ -37,6 +42,9 @@ class SessionManager(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_REMEMBER, value).apply()
 
     fun logout() {
+        // Keep environment setup status, clear user session
+        val isSetup = isEnvironmentSetup
         prefs.edit().clear().apply()
+        isEnvironmentSetup = isSetup
     }
 }
