@@ -3,6 +3,7 @@ name: Build Driver Loader APK
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -10,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -50,10 +53,32 @@ jobs:
           path: build.log
           retention-days: 7
 
-      - name: Upload Release APK
+      - name: Upload Release Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DriverLoader-Release
           path: app/build/outputs/apk/release/*.apk
           retention-days: 14
+
+      - name: Publish to GitHub Releases
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "NINMODS Kernel Driver Loader v1.0.0"
+          body: |
+            ## NINMODS Official Release v1.0.0
+            
+            ### Features:
+            - **Google Official Code Obfuscator**: R8 & ProGuard enabled with class repackaging and code optimization.
+            - **Master Drivers**: 410+ Kernel Objects integrated (`.ko.sh` / `.sh` auto-dispatcher for QX & RT).
+            - **APatch UI Architecture**: Official APatch Jetpack Compose theme, WarningCard, and floating capsule bottom bar.
+            - **Authentication**: APatch official structure Login Page with SuperUser security verification.
+            - **Package**: `com.andorid.ninmods`
+          files: app/build/outputs/apk/release/*.apk
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
