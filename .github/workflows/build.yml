@@ -43,20 +43,14 @@ jobs:
       - name: Build with Gradle
         run: |
           echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
-          ./gradlew assembleDebug assembleRelease --stacktrace
-          mkdir -p release_apks
-          find app/build/outputs/apk/ -type f -name "*.apk" | while read -r f; do
-            echo "Packaging: $f"
-            cp -v "$f" release_apks/
-          done
-          ls -la release_apks/
+          ./gradlew clean assembleRelease --stacktrace
 
       - name: Upload Release Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: DriverLoader-APKs
-          path: release_apks/*.apk
+          name: DriverLoader-Release
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 14
 
       - name: Publish to GitHub Releases
@@ -75,7 +69,7 @@ jobs:
             - **APatch UI Architecture**: Official APatch Jetpack Compose theme, WarningCard, and floating capsule bottom bar.
             - **Authentication**: APatch official structure Login Page with SuperUser security verification.
             - **Package**: `com.andorid.ninmods`
-          artifacts: "release_apks/*.apk"
+          artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true
           replacesArtifacts: true
           makeLatest: true
