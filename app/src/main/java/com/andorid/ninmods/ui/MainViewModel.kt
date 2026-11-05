@@ -106,6 +106,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return repository.getAllDrivers(mode)
     }
 
+    suspend fun getMatchingDrivers(mode: String): List<File> {
+        val kernel = _uiState.value.kernelRelease
+        return repository.findMatchingDrivers(kernel, mode)
+    }
+
     fun loadDriverScript(file: File) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isWorking = true)

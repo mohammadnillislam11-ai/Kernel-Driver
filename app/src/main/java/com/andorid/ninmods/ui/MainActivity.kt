@@ -1,8 +1,12 @@
 package com.andorid.ninmods.ui
 
+import android.content.res.ColorStateList
 import android.os.Bundle
+import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.ImageViewCompat
 import androidx.fragment.app.Fragment
 import com.andorid.ninmods.R
 import com.andorid.ninmods.databinding.ActivityMainBinding
@@ -14,6 +18,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
+    private var currentTabIndex = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,7 +27,6 @@ class MainActivity : AppCompatActivity() {
 
         setupFloatingNavBar()
 
-        // 1st page: Dashboard by default
         if (savedInstanceState == null) {
             selectTab(0)
         }
@@ -35,39 +39,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectTab(index: Int) {
-        // Reset all tabs to unselected
-        binding.tabDashboard.setBackgroundResource(0)
-        binding.tabLoader.setBackgroundResource(0)
-        binding.tabSettings.setBackgroundResource(0)
+        if (currentTabIndex == index) return
+        currentTabIndex = index
 
-        binding.iconDashboard.setColorFilter(0xFF939AA5.toInt())
-        binding.iconLoader.setColorFilter(0xFF939AA5.toInt())
-        binding.iconSettings.setColorFilter(0xFF939AA5.toInt())
+        updateTabState(binding.tabDashboard, binding.iconDashboard, index == 0)
+        updateTabState(binding.tabLoader, binding.iconLoader, index == 1)
+        updateTabState(binding.tabSettings, binding.iconSettings, index == 2)
 
         val fragment: Fragment = when (index) {
-            0 -> {
-                // 1st page: Dashboard (4 Apps Side-by-Side)
-                binding.tabDashboard.setBackgroundResource(R.drawable.apatch_pill_selected)
-                binding.iconDashboard.setColorFilter(0xFFD0BCFF.toInt())
-                DashboardFragment()
-            }
-            1 -> {
-                // 2nd page: Driver Loader (APatch 2 Side-by-Side Cards Dashboard & Controls)
-                binding.tabLoader.setBackgroundResource(R.drawable.apatch_pill_selected)
-                binding.iconLoader.setColorFilter(0xFFD0BCFF.toInt())
-                HomeFragment()
-            }
-            2 -> {
-                // 3rd page: Settings
-                binding.tabSettings.setBackgroundResource(R.drawable.apatch_pill_selected)
-                binding.iconSettings.setColorFilter(0xFFD0BCFF.toInt())
-                SettingsFragment()
-            }
+            0 -> DashboardFragment()
+            1 -> HomeFragment()
+            2 -> SettingsFragment()
             else -> DashboardFragment()
         }
 
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
             .commit()
+    }
+
+    private fun updateTabState(tabView: FrameLayout, iconView: ImageView, isSelected: Boolean) {
+        if (isSelected) {
+            tabView.setBackgroundResource(R.drawable.apatch_pill_selected)
+            ImageViewCompat.setImageTintList(iconView, ColorStateList.valueOf(0xFFD0BCFF.toInt()))
+        } else {
+            tabView.setBackgroundResource(0)
+            ImageViewCompat.setImageTintList(iconView, ColorStateList.valueOf(0xFF939AA5.toInt()))
+        }
     }
 }

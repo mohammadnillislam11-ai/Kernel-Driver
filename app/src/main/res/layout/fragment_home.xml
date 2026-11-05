@@ -19,16 +19,8 @@
             android:layout_height="wrap_content"
             android:text="Driver Loader"
             android:textColor="@color/apatch_text_primary"
-            android:textSize="24sp"
+            android:textSize="26sp"
             android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Kernel Driver &amp; SuperUser"
-            android:textColor="@color/apatch_text_secondary"
-            android:textSize="13sp" />
 
         <!-- APatch-style 2 Side-by-Side Status Cards -->
         <LinearLayout
@@ -161,9 +153,10 @@
                 android:layout_width="0dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="Load QX"
+                android:text="QX"
                 android:textColor="@color/apatch_on_primary"
                 android:textStyle="bold"
+                android:textSize="15sp"
                 app:icon="@drawable/play_circle"
                 app:iconTint="@color/apatch_on_primary"
                 app:backgroundTint="@color/apatch_primary"
@@ -178,9 +171,10 @@
                 android:layout_width="0dp"
                 android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="Load RT"
+                android:text="RT"
                 android:textColor="@color/apatch_text_primary"
                 android:textStyle="bold"
+                android:textSize="15sp"
                 app:icon="@drawable/device_mobile_down"
                 app:iconTint="@color/apatch_text_primary"
                 app:backgroundTint="@color/apatch_surface_variant"
@@ -193,8 +187,9 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="10dp"
-            android:text="Unload Driver"
+            android:text="Stop Driver"
             android:textColor="@color/apatch_error"
+            android:textStyle="bold"
             app:strokeColor="@color/apatch_error"
             app:icon="@drawable/trash"
             app:iconTint="@color/apatch_error"

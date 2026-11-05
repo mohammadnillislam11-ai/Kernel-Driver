@@ -80,14 +80,15 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v1.0.2
-          name: "NINMODS Kernel Driver Loader v1.0.2 (Official Release)"
+          tag: v1.0.3
+          name: "NINMODS Kernel Driver Loader v1.0.3 (Official Release)"
           body: |
-            ## NINMODS Official Release v1.0.2
-            - **Google Official Code Obfuscator**: R8 & ProGuard enabled.
-            - **Master Drivers**: 410+ Kernel Objects integrated.
-            - **Minimalist APatch Architecture**: 4 Apps side-by-side dashboard, APatch 2-card driver status, and clean icon navigation bar.
-            - **Package**: `com.andorid.ninmods`
+            ## NINMODS Official Release v1.0.3
+            - **Dialog Driver Picker**: Clicking QX or RT opens an official Material dialog showing only kernel-matching drivers.
+            - **Stop Driver Logic**: Enabled strictly when a driver is actively loaded.
+            - **Clean Headers**: Subtitles removed across all screens.
+            - **Bug-Free Nav Bar**: Fixed icon tinting and smooth floating pill transitions.
+            - **Google Code Obfuscator**: Active R8 minification.
           artifacts: "app/build/outputs/apk/release/*.apk"
           allowUpdates: true
           replacesArtifacts: true
