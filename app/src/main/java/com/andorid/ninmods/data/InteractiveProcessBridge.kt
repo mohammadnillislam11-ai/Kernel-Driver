@@ -59,6 +59,7 @@ class InteractiveProcessBridge(
             try {
                 _executionStatus.value = "Starting execution..."
                 _licensePromptTriggered.value = false
+                _isReadyToStart.value = false
 
                 val suBin = listOf(
                     "/system/bin/su",
