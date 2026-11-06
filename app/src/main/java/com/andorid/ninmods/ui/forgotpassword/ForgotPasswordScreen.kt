@@ -179,7 +179,7 @@ fun ForgotPasswordScreen(
                             successMessage = result.getOrThrow().message
                             submitted = true
                         } else {
-                            errorMessage = result.exceptionOrNull()?.message ?: "Reset request failed"
+                            errorMessage = AuthApiClient.sanitizeErrorMessage(result.exceptionOrNull()?.message)
                         }
                     }
                 },

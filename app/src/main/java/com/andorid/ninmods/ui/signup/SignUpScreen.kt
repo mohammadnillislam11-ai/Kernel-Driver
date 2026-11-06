@@ -97,7 +97,7 @@ fun SignUpScreen(
                         Toast.makeText(context, "Account created successfully! Please login.", Toast.LENGTH_LONG).show()
                         onNavigateToLogin()
                     } else {
-                        errorMessage = result.exceptionOrNull()?.message ?: "Sign up failed"
+                        errorMessage = AuthApiClient.sanitizeErrorMessage(result.exceptionOrNull()?.message)
                     }
                 }
             }

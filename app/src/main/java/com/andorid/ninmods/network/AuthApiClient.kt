@@ -130,16 +130,12 @@ object AuthApiClient {
                 )
                 Result.success(result)
             } else {
-                val errorMsg = json.optString("error", json.optString("message", "Invalid login credentials (HTTP $code)"))
+                val rawMsg = json.optString("error", json.optString("message", "Invalid login credentials (HTTP $code)"))
+                val errorMsg = sanitizeErrorMessage(rawMsg, code)
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            val cleanError = when {
-                e.message?.contains("Unable to resolve host") == true -> "Server unreachable. Check internet connection or domain configuration in AppConfig."
-                e.message?.contains("failed to connect") == true -> "Could not connect to backend server."
-                else -> e.message ?: "Authentication network error"
-            }
-            Result.failure(Exception(cleanError))
+            Result.failure(Exception(sanitizeNetworkException(e)))
         }
     }
 
@@ -175,15 +171,12 @@ object AuthApiClient {
                 )
                 Result.success(result)
             } else {
-                val errorMsg = json.optString("error", json.optString("message", "Registration failed (HTTP $code)"))
+                val rawMsg = json.optString("error", json.optString("message", "Registration failed (HTTP $code)"))
+                val errorMsg = sanitizeErrorMessage(rawMsg, code)
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            val cleanError = when {
-                e.message?.contains("Unable to resolve host") == true -> "Server unreachable. Check domain in AppConfig."
-                else -> e.message ?: "Signup network error"
-            }
-            Result.failure(Exception(cleanError))
+            Result.failure(Exception(sanitizeNetworkException(e)))
         }
     }
 
@@ -211,11 +204,12 @@ object AuthApiClient {
                 val msg = json.optString("message", "Password reset successful!")
                 Result.success(BasicResponse(success = true, message = msg))
             } else {
-                val errorMsg = json.optString("error", json.optString("message", "Password reset failed (HTTP $code)"))
+                val rawMsg = json.optString("error", json.optString("message", "Password reset failed (HTTP $code)"))
+                val errorMsg = sanitizeErrorMessage(rawMsg, code)
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "Password reset error"))
+            Result.failure(Exception(sanitizeNetworkException(e)))
         }
     }
 
@@ -522,17 +516,46 @@ object AuthApiClient {
         }
     }
 
-    fun sanitizeNetworkException(e: Exception): String {
-        val msg = e.message ?: ""
+    fun sanitizeErrorMessage(rawError: String?, httpCode: Int = 200): String {
+        val msg = rawError?.trim() ?: ""
         return when {
-            msg.contains("Unable to resolve host", ignoreCase = true) ->
-                "Cannot resolve server domain. Check your internet connection."
+            msg.isBlank() -> if (httpCode >= 500) "Server is temporarily unavailable. Please try again later." else "Request failed. Please try again."
+            // Database / SQL / Backend internal errors
+            msg.contains("doesn't exist", ignoreCase = true) ||
+            msg.contains("SQLSTATE", ignoreCase = true) || 
+            msg.contains("PDOException", ignoreCase = true) || 
+            msg.contains("database", ignoreCase = true) ||
+            msg.contains("syntax error", ignoreCase = true) ||
+            msg.contains("Access denied", ignoreCase = true) ||
+            msg.contains("Unknown column", ignoreCase = true) ||
+            msg.contains("ECONNREFUSED", ignoreCase = true) ||
+            msg.contains("Internal Server Error", ignoreCase = true) ||
+            httpCode >= 500 ->
+                "Server is currently under maintenance. Please try again shortly."
+            // Network / Connection issues
+            msg.contains("Unable to resolve host", ignoreCase = true) || msg.contains("Cannot resolve server", ignoreCase = true) ->
+                "Server unreachable. Please check your internet connection."
             msg.contains("failed to connect", ignoreCase = true) || msg.contains("Connection refused", ignoreCase = true) ->
-                "Could not connect to backend server. Server may be offline."
+                "Unable to connect to backend server. Server may be offline."
             msg.contains("timed out", ignoreCase = true) || msg.contains("SocketTimeout", ignoreCase = true) ->
                 "Server connection timed out. Please try again."
-            else -> msg.ifBlank { "Network communication error occurred." }
+            // Authentication credentials
+            msg.contains("Invalid login credentials", ignoreCase = true) ||
+            msg.contains("Invalid credentials", ignoreCase = true) || 
+            msg.contains("Invalid username or password", ignoreCase = true) || 
+            msg.contains("Invalid email or password", ignoreCase = true) ||
+            msg.contains("Password incorrect", ignoreCase = true) ||
+            msg.contains("User not found", ignoreCase = true) ->
+                "Invalid email or password."
+            msg.contains("Account suspended", ignoreCase = true) || msg.contains("banned", ignoreCase = true) ->
+                "Your account is suspended. Please contact support."
+            else -> msg
         }
+    }
+
+    fun sanitizeNetworkException(e: Exception): String {
+        val msg = e.message ?: ""
+        return sanitizeErrorMessage(msg, 0)
     }
 
     private fun sendPostRequest(

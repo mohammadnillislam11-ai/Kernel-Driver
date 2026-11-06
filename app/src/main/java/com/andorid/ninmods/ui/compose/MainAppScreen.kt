@@ -3,7 +3,14 @@ package com.andorid.ninmods.ui.compose
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -178,9 +185,36 @@ fun MainAppScreen(
             }
         }
     ) { innerPadding ->
-        Crossfade(
+        // APatch Official Screen Transitions (tween 340ms, horizontal slide + fade for detail screens, fade for bottom tabs)
+        AnimatedContent(
             targetState = currentDestination,
-            label = "ScreenTransition",
+            transitionSpec = {
+                if (targetState == MainDestination.PROFILE) {
+                    // Navigate to detail page: slide in from right + fade in; previous slides out slightly to left + fades out
+                    (slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(340)
+                    ) + fadeIn(animationSpec = tween(340))) togetherWith
+                    (slideOutHorizontally(
+                        targetOffsetX = { -it / 4 },
+                        animationSpec = tween(340)
+                    ) + fadeOut(animationSpec = tween(340)))
+                } else if (initialState == MainDestination.PROFILE) {
+                    // Returning from detail page: previous slides in from left; detail scales down + fades out
+                    (slideInHorizontally(
+                        initialOffsetX = { -it / 4 },
+                        animationSpec = tween(340)
+                    ) + fadeIn(animationSpec = tween(340))) togetherWith
+                    (scaleOut(
+                        targetScale = 0.9f,
+                        animationSpec = tween(340)
+                    ) + fadeOut(animationSpec = tween(340)))
+                } else {
+                    // Switching between bottom navigation tabs (Dashboard, Loader, Settings): APatch 340ms fade
+                    fadeIn(animationSpec = tween(340)) togetherWith fadeOut(animationSpec = tween(340))
+                }
+            },
+            label = "APatchDestinationTransition",
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

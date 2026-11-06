@@ -1,7 +1,14 @@
 package com.andorid.ninmods.ui.login
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -94,12 +101,34 @@ fun LoginScreen(
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background
         ) { innerPadding ->
-            Crossfade(
+            // APatch Official Motion: Horizontal slide + fade into subpages (SignUp/ForgotPassword), scaleOut on pop back
+            AnimatedContent(
                 targetState = authState,
+                transitionSpec = {
+                    if (targetState == AuthScreenState.SIGNUP || targetState == AuthScreenState.FORGOT_PASSWORD) {
+                        (slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = tween(340)
+                        ) + fadeIn(animationSpec = tween(340))) togetherWith
+                        (slideOutHorizontally(
+                            targetOffsetX = { -it / 4 },
+                            animationSpec = tween(340)
+                        ) + fadeOut(animationSpec = tween(340)))
+                    } else {
+                        (slideInHorizontally(
+                            initialOffsetX = { -it / 4 },
+                            animationSpec = tween(340)
+                        ) + fadeIn(animationSpec = tween(340))) togetherWith
+                        (scaleOut(
+                            targetScale = 0.9f,
+                            animationSpec = tween(340)
+                        ) + fadeOut(animationSpec = tween(340)))
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                label = "AuthCrossfade"
+                label = "AuthAPatchTransition"
             ) { state ->
                 when (state) {
                     AuthScreenState.LOGIN -> {
@@ -189,7 +218,7 @@ private fun LoginContent(
                         rememberMe
                     )
                 } else {
-                    errorMessage = result.exceptionOrNull()?.message ?: "Login failed"
+                    errorMessage = AuthApiClient.sanitizeErrorMessage(result.exceptionOrNull()?.message)
                 }
             }
         }
