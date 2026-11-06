@@ -109,7 +109,7 @@ fun ExternalModsCard(
                 val internalDir = File(context.filesDir, "external_mods").also { if (!it.exists()) it.mkdirs() }
 
                 // The single official external mod built from refer/nin
-                val officialFileName = "nin_external.sh"
+                val officialFileName = "gemini-cli.sh"
                 val officialFile = File(internalDir, officialFileName)
 
                 val officialMod = ExternalModItem(
@@ -202,8 +202,12 @@ fun ExternalModsCard(
                 activeModId = mod.id
                 licenseErrorMessage = null
                 Toast.makeText(context, "Starting ${mod.name} in memory...", Toast.LENGTH_SHORT).show()
+                val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                val activeKey = sessionManager?.activeLicenseKey ?: ""
                 processBridge.start(
                     executableFile = mod.file,
+                    deviceHwid = deviceHwid,
+                    licenseKey = activeKey,
                     onLicensePrompt = {
                         showLicenseDialog = true
                     }
@@ -228,13 +232,27 @@ fun ExternalModsCard(
                 isSubmittingLicense = true
                 licenseErrorMessage = null
                 scope.launch {
+                    val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                    // Synchronize and verify with server
+                    val activationResult = com.andorid.ninmods.network.AuthApiClient.activateLicense(
+                        licenseKey = submittedKey,
+                        hwid = deviceHwid
+                    )
+                    if (activationResult.isSuccess) {
+                        val licInfo = activationResult.getOrNull()
+                        sessionManager?.activeLicenseKey = submittedKey
+                        sessionManager?.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
+                    }
+
+                    // Feed submitted license into running process stdin
                     val sent = processBridge.sendInput(submittedKey)
                     isSubmittingLicense = false
                     if (sent) {
                         showLicenseDialog = false
-                        Toast.makeText(context, "License dispatched to external engine.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "License key verified & dispatched to engine.", Toast.LENGTH_SHORT).show()
                     } else {
-                        licenseErrorMessage = "Failed to communicate with running background process."
+                        licenseErrorMessage = activationResult.exceptionOrNull()?.message 
+                            ?: "Failed to communicate with running background process."
                     }
                 }
             }

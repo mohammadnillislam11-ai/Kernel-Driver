@@ -46,6 +46,8 @@ class InteractiveProcessBridge(
     fun start(
         executableFile: File,
         workingDir: File = executableFile.parentFile ?: executableFile,
+        deviceHwid: String = "",
+        licenseKey: String = "",
         onLicensePrompt: () -> Unit = {}
     ) {
         if (_isRunning.value) return
@@ -72,9 +74,20 @@ class InteractiveProcessBridge(
                 outputStream = out
                 _isRunning.value = true
 
-                // Grant execution rights and launch
+                // Grant execution rights and setup shared environment
                 out.writeBytes("chmod 755 '${executableFile.absolutePath}'\n")
                 out.writeBytes("cd '${workingDir.absolutePath}'\n")
+
+                if (deviceHwid.isNotBlank()) {
+                    out.writeBytes("export NIN_DEVICE_HWID='$deviceHwid'\n")
+                    out.writeBytes("echo '$deviceHwid' > /data/local/tmp/.nin_hwid 2>/dev/null\n")
+                    out.writeBytes("chmod 644 /data/local/tmp/.nin_hwid 2>/dev/null\n")
+                }
+                if (licenseKey.isNotBlank()) {
+                    out.writeBytes("export NIN_LICENSE_KEY='$licenseKey'\n")
+                }
+                out.writeBytes("export NIN_SERVER_URL='${com.andorid.ninmods.config.AppConfig.BASE_URL.trimEnd('/')}'\n")
+
                 if (executableFile.name.endsWith(".sh")) {
                     out.writeBytes("sh '${executableFile.absolutePath}'\n")
                 } else {
