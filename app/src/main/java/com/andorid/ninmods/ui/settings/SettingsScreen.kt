@@ -107,7 +107,7 @@ fun SettingsScreen(
             AuthApiClient.checkAppVersion("loader")
                 .onSuccess { ver ->
                     isCheckingUpdate = false
-                    val currentVersionCode = 126
+                    val currentVersionCode = com.andorid.ninmods.config.AppConfig.VERSION_CODE
                     if (ver.versionCode > currentVersionCode) {
                         isNewUpdateAvailable = true
                         latestDownloadUrl = ver.downloadUrl
@@ -119,7 +119,7 @@ fun SettingsScreen(
                 }
                 .onFailure {
                     isCheckingUpdate = false
-                    updateStatusText = "Running official build v1.2.6"
+                    updateStatusText = "Running official build ${com.andorid.ninmods.config.AppConfig.VERSION_NAME}"
                 }
         }
     }
