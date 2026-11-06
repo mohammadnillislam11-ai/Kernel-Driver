@@ -90,6 +90,7 @@ fun SettingsScreen(
     var isSuGranted by remember { mutableStateOf(false) }
     var isStorageGranted by remember { mutableStateOf(false) }
     var isNotificationGranted by remember { mutableStateOf(false) }
+    var showSetupDialog by remember { mutableStateOf(false) }
 
     var globalNamespace by remember { mutableStateOf(true) }
     var legacySu by remember { mutableStateOf(false) }
@@ -415,6 +416,38 @@ fun SettingsScreen(
                         tint = if (isNotificationGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
                         modifier = Modifier.size(20.dp)
                     )
+                }
+
+                // 5. Re-run Initial Setup & Permission Wizard
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showSetupDialog = true
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.VerifiedUser,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.size(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Permission Setup Wizard",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Reconfigure root, overlay, storage, and notifications",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -742,5 +775,23 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    if (showSetupDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showSetupDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            com.andorid.ninmods.ui.setup.InstallationSetupScreen(
+                onCompleteSetup = {
+                    showSetupDialog = false
+                    refreshAllStatuses()
+                },
+                onSkipSetup = {
+                    showSetupDialog = false
+                    refreshAllStatuses()
+                }
+            )
+        }
     }
 }
