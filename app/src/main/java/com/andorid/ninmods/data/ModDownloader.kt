@@ -22,6 +22,7 @@ object ModDownloader {
 
     /**
      * Download a mod package (zip or binary) from backend server to local directory.
+     * Features an automated multi-tier fallback ladder across server routes and GitHub releases.
      */
     suspend fun downloadMod(
         context: Context,
@@ -37,23 +38,82 @@ object ModDownloader {
         try {
             if (!targetDir.exists()) targetDir.mkdirs()
 
-            val effectiveUrl = if (downloadUrl.startsWith("http")) {
-                downloadUrl
+            val cleanFileBasename = File(downloadUrl).name
+            val candidateUrls = mutableListOf<String>()
+
+            if (downloadUrl.startsWith("http://", ignoreCase = true) || downloadUrl.startsWith("https://", ignoreCase = true)) {
+                candidateUrls.add(downloadUrl)
             } else {
-                "${AppConfig.BASE_URL.trimEnd('/')}/downloads/${downloadUrl.trimStart('/')}"
+                val cleanPath = downloadUrl.trimStart('/')
+                // 1. Primary: exact subpath under /downloads/
+                candidateUrls.add("${AppConfig.BASE_URL.trimEnd('/')}/downloads/$cleanPath")
+                // 2. Fallback 1: flat under /downloads/
+                if (cleanPath != cleanFileBasename) {
+                    candidateUrls.add("${AppConfig.BASE_URL.trimEnd('/')}/downloads/$cleanFileBasename")
+                }
+                // 3. Fallback 2: direct under root domain
+                candidateUrls.add("${AppConfig.BASE_URL.trimEnd('/')}/$cleanPath")
+                // 4. Fallback 3: GitHub Official Release mirror
+                candidateUrls.add("https://github.com/mohammadnillislam11-ai/Kernel-Driver/releases/download/${AppConfig.VERSION_NAME}/$cleanFileBasename")
+                // 5. Fallback 4: Alternate .sh if .zip or vice versa
+                if (cleanFileBasename.endsWith(".zip", ignoreCase = true)) {
+                    val shName = cleanFileBasename.removeSuffix(".zip") + ".sh"
+                    candidateUrls.add("${AppConfig.BASE_URL.trimEnd('/')}/downloads/external/$shName")
+                    candidateUrls.add("${AppConfig.BASE_URL.trimEnd('/')}/downloads/$shName")
+                }
             }
 
-            val url = URL(effectiveUrl)
-            conn = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = AppConfig.TIMEOUT_MILLIS
-                readTimeout = AppConfig.TIMEOUT_MILLIS
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "NINMODS-DriverLoader-Client")
+            var connectionSuccess = false
+            var lastHttpCode = 0
+            var activeUrl = ""
+
+            for (tryUrl in candidateUrls.distinct()) {
+                activeUrl = tryUrl
+                var currentUrlStr = tryUrl
+                var redirects = 0
+                var currentConn: HttpURLConnection? = null
+
+                while (redirects < 5) {
+                    val urlObj = URL(currentUrlStr)
+                    currentConn = (urlObj.openConnection() as HttpURLConnection).apply {
+                        connectTimeout = AppConfig.TIMEOUT_MILLIS
+                        readTimeout = AppConfig.TIMEOUT_MILLIS
+                        instanceFollowRedirects = true
+                        setRequestProperty("User-Agent", "NINMODS-DriverLoader-Client")
+                        setRequestProperty("Accept", "*/*")
+                    }
+
+                    val code = currentConn.responseCode
+                    lastHttpCode = code
+
+                    // Check for standard redirects (including cross-protocol)
+                    if (code in listOf(HttpURLConnection.HTTP_MOVED_PERM, HttpURLConnection.HTTP_MOVED_TEMP, HttpURLConnection.HTTP_SEE_OTHER, 307, 308)) {
+                        val loc = currentConn.getHeaderField("Location")
+                        if (!loc.isNullOrBlank()) {
+                            currentUrlStr = if (loc.startsWith("http")) loc else URL(urlObj, loc).toString()
+                            redirects++
+                            currentConn.disconnect()
+                            continue
+                        }
+                    }
+
+                    if (code in 200..299) {
+                        conn = currentConn
+                        connectionSuccess = true
+                        break
+                    } else {
+                        currentConn.disconnect()
+                        break
+                    }
+                }
+
+                if (connectionSuccess) break
             }
 
-            val code = conn.responseCode
-            if (code !in 200..299) {
-                return@withContext Result.failure(Exception("Server returned HTTP $code while downloading."))
+            if (!connectionSuccess || conn == null) {
+                return@withContext Result.failure(
+                    Exception("Server returned HTTP $lastHttpCode while downloading ($cleanFileBasename).")
+                )
             }
 
             val contentLength = conn.contentLength.toLong()

@@ -166,6 +166,11 @@ fun ExternalModsCard(
                         ModDownloader.unzip(publicZip, internalDir)
                         officialFile.setExecutable(true, false)
                     }
+                    val publicSh = File(publicDownloadDir, officialFileName)
+                    if (publicSh.exists() && (!officialFile.exists() || officialFile.length() == 0L)) {
+                        publicSh.copyTo(officialFile, overwrite = true)
+                        officialFile.setExecutable(true, false)
+                    }
                 } catch (_: Exception) {}
 
                 val officialMod = ExternalModItem(
