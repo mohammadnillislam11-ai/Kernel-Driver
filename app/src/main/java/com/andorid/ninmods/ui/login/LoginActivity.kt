@@ -1,10 +1,12 @@
 package com.andorid.ninmods.ui.login
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -12,12 +14,17 @@ import androidx.compose.runtime.setValue
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.ui.MainActivity
 import com.andorid.ninmods.ui.setup.InstallationSetupScreen
+import com.andorid.ninmods.ui.theme.APatchTheme
 
 class LoginActivity : ComponentActivity() {
 
     private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         super.onCreate(savedInstanceState)
 
         sessionManager = SessionManager(this)
@@ -29,47 +36,49 @@ class LoginActivity : ComponentActivity() {
         }
 
         setContent {
-            var showSetup by remember { mutableStateOf(!sessionManager.isEnvironmentSetup) }
+            APatchTheme {
+                var showSetup by remember { mutableStateOf(!sessionManager.isEnvironmentSetup) }
 
-            if (showSetup) {
-                InstallationSetupScreen(
-                    onCompleteSetup = {
-                        sessionManager.isEnvironmentSetup = true
-                        if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
-                            navigateToMain()
-                        } else {
-                            showSetup = false
+                if (showSetup) {
+                    InstallationSetupScreen(
+                        onCompleteSetup = {
+                            sessionManager.isEnvironmentSetup = true
+                            if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
+                                navigateToMain()
+                            } else {
+                                showSetup = false
+                            }
+                        },
+                        onSkipSetup = {
+                            sessionManager.isEnvironmentSetup = true
+                            if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
+                                navigateToMain()
+                            } else {
+                                showSetup = false
+                            }
                         }
-                    },
-                    onSkipSetup = {
-                        sessionManager.isEnvironmentSetup = true
-                        if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
-                            navigateToMain()
-                        } else {
-                            showSetup = false
+                    )
+                } else {
+                    LoginScreen { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
+                        sessionManager.isLoggedIn = true
+                        sessionManager.userEmail = email
+                        sessionManager.userName = name
+                        sessionManager.authToken = apiKey
+                        sessionManager.rememberLogin = remember
+                        sessionManager.userRole = role
+                        sessionManager.userBalance = balance
+                        if (!activeKey.isNullOrBlank()) {
+                            sessionManager.activeLicenseKey = activeKey
                         }
-                    }
-                )
-            } else {
-                LoginScreen { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
-                    sessionManager.isLoggedIn = true
-                    sessionManager.userEmail = email
-                    sessionManager.userName = name
-                    sessionManager.authToken = apiKey
-                    sessionManager.rememberLogin = remember
-                    sessionManager.userRole = role
-                    sessionManager.userBalance = balance
-                    if (!activeKey.isNullOrBlank()) {
-                        sessionManager.activeLicenseKey = activeKey
-                    }
 
-                    if (licenseRemainingSec != null && licenseRemainingSec > 0) {
-                        sessionManager.serverRemainingSeconds = licenseRemainingSec
-                        sessionManager.licenseExpiryMillis = System.currentTimeMillis() + (licenseRemainingSec * 1000L)
-                    }
+                        if (licenseRemainingSec != null && licenseRemainingSec > 0) {
+                            sessionManager.serverRemainingSeconds = licenseRemainingSec
+                            sessionManager.licenseExpiryMillis = System.currentTimeMillis() + (licenseRemainingSec * 1000L)
+                        }
 
-                    Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
-                    navigateToMain()
+                        Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
+                        navigateToMain()
+                    }
                 }
             }
         }

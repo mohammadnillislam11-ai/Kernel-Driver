@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun APatchTheme(
     darkTheme: Boolean = true, // Default to APatch signature dark theme
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Preserve APatch signature dark blue palette across all screens
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
