@@ -89,16 +89,40 @@ fun ExternalModsCard(
     var unifiedDialogState by remember { mutableStateOf<UnifiedModDialogState?>(null) }
     var selectedModForAction by remember { mutableStateOf<ExternalModItem?>(null) }
 
+    // Stream real-time terminal output from the background shell directly into dialog
+    LaunchedEffect(Unit) {
+        processBridge.outputLines.collect { chunk ->
+            val lines = chunk.split("\n").map { it.trimEnd() }.filter { it.isNotBlank() }
+            val current = unifiedDialogState
+            if (current is UnifiedModDialogState.LicenseAuth) {
+                val updatedLogs = (current.terminalLogs + lines).takeLast(40)
+                val failureMsg = lines.firstOrNull {
+                    it.contains("Authentication failed", ignoreCase = true) ||
+                    it.contains("Invalid or expired", ignoreCase = true) ||
+                    it.contains("[-] ", ignoreCase = true)
+                }
+                unifiedDialogState = current.copy(
+                    terminalLogs = updatedLogs,
+                    errorMessage = failureMsg ?: current.errorMessage,
+                    isSubmitting = if (failureMsg != null) false else current.isSubmitting
+                )
+            }
+        }
+    }
+
     // Automatically trigger license pop-up dialog when stdin prompt is detected in running binary
     LaunchedEffect(isLicensePromptTriggered) {
         if (isLicensePromptTriggered) {
             val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
-            unifiedDialogState = UnifiedModDialogState.LicenseAuth(
-                initialKey = initialKey,
-                isSubmitting = false,
-                errorMessage = null,
-                isVerified = false
-            )
+            val current = unifiedDialogState
+            if (current !is UnifiedModDialogState.LicenseAuth) {
+                unifiedDialogState = UnifiedModDialogState.LicenseAuth(
+                    initialKey = initialKey,
+                    isSubmitting = false,
+                    errorMessage = null,
+                    isVerified = false
+                )
+            }
         }
     }
 
@@ -106,7 +130,11 @@ fun ExternalModsCard(
         if (isReadyToStart) {
             val current = unifiedDialogState
             if (current is UnifiedModDialogState.LicenseAuth) {
-                unifiedDialogState = current.copy(isSubmitting = false, isVerified = true)
+                unifiedDialogState = current.copy(
+                    isSubmitting = false,
+                    isVerified = true,
+                    terminalLogs = (current.terminalLogs + listOf("[+] License validated! Engine authorized and ready.")).takeLast(40)
+                )
             }
         }
     }
@@ -193,25 +221,44 @@ fun ExternalModsCard(
             }
 
             activeModId = mod.id
-            Toast.makeText(context, "Initializing ${mod.name}...", Toast.LENGTH_SHORT).show()
+            val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+            unifiedDialogState = UnifiedModDialogState.LicenseAuth(
+                initialKey = initialKey,
+                isSubmitting = false,
+                errorMessage = null,
+                isVerified = false,
+                terminalLogs = listOf("[*] Initializing background root daemon...", "[*] Spawning ${mod.name} process...")
+            )
+
             val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
             processBridge.start(
                 executableFile = mod.file,
                 deviceHwid = deviceHwid,
-                licenseKey = "", // Force prompt detection so terminal opens LicenseAuth dialog
+                licenseKey = "", // Run interactively so user submits through the APatch UI
                 onLicensePrompt = {
-                    val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
-                    unifiedDialogState = UnifiedModDialogState.LicenseAuth(
-                        initialKey = initialKey,
-                        isSubmitting = false,
-                        errorMessage = null,
-                        isVerified = false
-                    )
+                    val current = unifiedDialogState
+                    if (current !is UnifiedModDialogState.LicenseAuth) {
+                        unifiedDialogState = UnifiedModDialogState.LicenseAuth(
+                            initialKey = initialKey,
+                            isSubmitting = false,
+                            errorMessage = null,
+                            isVerified = false
+                        )
+                    }
                 },
                 onError = { errMsg ->
-                    unifiedDialogState = UnifiedModDialogState.RootRequired(
-                        "Binary failed to load: $errMsg\n\nPlease ensure Superuser permission is granted to NINMODS in your root manager (APatch/KernelSU/Magisk)."
-                    )
+                    val current = unifiedDialogState
+                    if (current is UnifiedModDialogState.LicenseAuth) {
+                        unifiedDialogState = current.copy(
+                            isSubmitting = false,
+                            errorMessage = errMsg,
+                            terminalLogs = (current.terminalLogs + listOf("[-] $errMsg")).takeLast(40)
+                        )
+                    } else {
+                        unifiedDialogState = UnifiedModDialogState.RootRequired(
+                            "Binary failed to load: $errMsg\n\nPlease ensure Superuser permission is granted to NINMODS in your root manager (APatch/KernelSU/Magisk)."
+                        )
+                    }
                     activeModId = null
                 }
             )
@@ -261,9 +308,27 @@ fun ExternalModsCard(
             },
             onSubmitKey = { submittedKey ->
                 if (state is UnifiedModDialogState.LicenseAuth) {
-                    unifiedDialogState = state.copy(isSubmitting = true, errorMessage = null)
+                    unifiedDialogState = state.copy(
+                        isSubmitting = true,
+                        errorMessage = null,
+                        terminalLogs = (state.terminalLogs + listOf("[*] Passing key to background process...", "[*] Verifying license with server...")).takeLast(40)
+                    )
                     scope.launch {
                         val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                        // 1. Pass key directly to the running background shell stdin
+                        val sent = processBridge.sendInput(submittedKey)
+                        if (!sent) {
+                            val current = unifiedDialogState
+                            if (current is UnifiedModDialogState.LicenseAuth) {
+                                unifiedDialogState = current.copy(
+                                    isSubmitting = false,
+                                    errorMessage = "Failed to communicate with running background process.",
+                                    terminalLogs = (current.terminalLogs + listOf("[-] Stdin pipe disconnected")).takeLast(40)
+                                )
+                            }
+                        }
+
+                        // 2. Concurrently synchronize activation with server API
                         val activationResult = com.andorid.ninmods.network.AuthApiClient.activateLicense(
                             licenseKey = submittedKey,
                             hwid = deviceHwid
@@ -274,19 +339,16 @@ fun ExternalModsCard(
                                 sm.activeLicenseKey = submittedKey
                                 sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
                             }
-                            val sent = processBridge.sendInput(submittedKey)
-                            if (!sent) {
-                                unifiedDialogState = state.copy(
+                        } else {
+                            val serverErr = activationResult.exceptionOrNull()?.message ?: "Server verification rejected license key."
+                            val current = unifiedDialogState
+                            if (current is UnifiedModDialogState.LicenseAuth && !current.isVerified) {
+                                unifiedDialogState = current.copy(
                                     isSubmitting = false,
-                                    errorMessage = "Failed to communicate with running background process."
+                                    errorMessage = serverErr,
+                                    terminalLogs = (current.terminalLogs + listOf("[-] $serverErr")).takeLast(40)
                                 )
                             }
-                        } else {
-                            unifiedDialogState = state.copy(
-                                isSubmitting = false,
-                                errorMessage = activationResult.exceptionOrNull()?.message
-                                    ?: "License verification failed on server."
-                            )
                         }
                     }
                 }

@@ -78,6 +78,9 @@ class InteractiveProcessBridge(
                 val out = DataOutputStream(proc.outputStream)
                 outputStream = out
 
+                // 1. Purge previous conflicting instances to guarantee zero resource collision
+                out.writeBytes("killall -9 gemini-cli 2>/dev/null; pkill -9 -f gemini_proc 2>/dev/null; rm -f /data/local/tmp/.gemini_proc_* 2>/dev/null\n")
+
                 // Grant execution rights and setup shared environment
                 out.writeBytes("chmod 755 '${executableFile.absolutePath}'\n")
                 out.writeBytes("cd '${workingDir.absolutePath}'\n")
@@ -202,6 +205,7 @@ class InteractiveProcessBridge(
 
     private fun cleanup() {
         try {
+            outputStream?.writeBytes("killall -9 gemini-cli 2>/dev/null; pkill -9 -f gemini_proc 2>/dev/null\n")
             outputStream?.writeBytes("exit\n")
             outputStream?.flush()
         } catch (_: Exception) {}

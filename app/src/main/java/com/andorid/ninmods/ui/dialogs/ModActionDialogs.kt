@@ -2,6 +2,7 @@ package com.andorid.ninmods.ui.dialogs
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,13 +12,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
@@ -42,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -71,7 +77,8 @@ sealed interface UnifiedModDialogState {
         val initialKey: String,
         val isSubmitting: Boolean = false,
         val errorMessage: String? = null,
-        val isVerified: Boolean = false
+        val isVerified: Boolean = false,
+        val terminalLogs: List<String> = emptyList()
     ) : UnifiedModDialogState
     data class StopConfirm(val modName: String) : UnifiedModDialogState
 }
@@ -381,6 +388,68 @@ fun ApatchUnifiedModDialog(
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.padding(horizontal = 4.dp)
                                     )
+                                }
+                            }
+
+                            // Live Terminal Streaming View (APatch Monospace Style)
+                            if (currentState.terminalLogs.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 130.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFF141414),
+                                    border = BorderStroke(1.dp, Color(0xFF282828))
+                                ) {
+                                    val terminalScroll = rememberScrollState()
+                                    LaunchedEffect(currentState.terminalLogs.size) {
+                                        terminalScroll.animateScrollTo(terminalScroll.maxValue)
+                                    }
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(10.dp)
+                                            .verticalScroll(terminalScroll)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(bottom = 6.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(
+                                                        if (currentState.isVerified) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                                                        CircleShape
+                                                    )
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = if (currentState.isVerified) "TERMINAL: AUTHORIZED" else "LIVE TERMINAL STREAM",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF888888)
+                                            )
+                                        }
+
+                                        currentState.terminalLogs.forEach { logLine ->
+                                            val lineTint = when {
+                                                logLine.contains("[-] ", ignoreCase = true) || logLine.contains("failed", ignoreCase = true) || logLine.contains("invalid", ignoreCase = true) || logLine.contains("error", ignoreCase = true) -> Color(0xFFFFB4AB)
+                                                logLine.contains("[+] ", ignoreCase = true) || logLine.contains("success", ignoreCase = true) || logLine.contains("authorized", ignoreCase = true) -> Color(0xFF81C784)
+                                                logLine.contains("[?] ", ignoreCase = true) -> Color(0xFFFFCC80)
+                                                else -> Color(0xFFD0D0D0)
+                                            }
+                                            Text(
+                                                text = logLine,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 11.sp,
+                                                color = lineTint,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
