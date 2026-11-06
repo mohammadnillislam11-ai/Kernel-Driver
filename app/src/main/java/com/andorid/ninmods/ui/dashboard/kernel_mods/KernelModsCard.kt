@@ -227,7 +227,7 @@ fun KernelModsCard(
 
     // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG ───
     if (showLicenseDialog) {
-        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
         ApatchLicenseKeyDialog(
             initialKey = initialKey,
             isSubmitting = isSubmittingLicense,
