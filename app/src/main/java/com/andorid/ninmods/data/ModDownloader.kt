@@ -127,7 +127,7 @@ object ModDownloader {
         }
     }
 
-    private fun unzip(zipFile: File, targetDir: File) {
+    fun unzip(zipFile: File, targetDir: File) {
         val canonicalDest = targetDir.canonicalPath
         ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
             var entry = zis.nextEntry

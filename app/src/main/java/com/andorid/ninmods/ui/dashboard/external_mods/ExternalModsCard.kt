@@ -120,13 +120,32 @@ fun ExternalModsCard(
                 val officialZipName = "gemini-cli.zip"
                 val officialFile = File(internalDir, officialFileName)
 
+                // Self-healing: if gemini-cli.zip is present locally but .sh is missing, unpack it automatically
+                val internalZip = File(internalDir, officialZipName)
+                if (internalZip.exists() && (!officialFile.exists() || officialFile.length() == 0L)) {
+                    try {
+                        ModDownloader.unzip(internalZip, internalDir)
+                        officialFile.setExecutable(true, false)
+                    } catch (_: Exception) {}
+                }
+
+                // If user downloaded via browser / MT Manager to Download folder, unpack to internalDir as well
+                try {
+                    val publicDownloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    val publicZip = File(publicDownloadDir, officialZipName)
+                    if (publicZip.exists() && (!officialFile.exists() || officialFile.length() == 0L)) {
+                        ModDownloader.unzip(publicZip, internalDir)
+                        officialFile.setExecutable(true, false)
+                    }
+                } catch (_: Exception) {}
+
                 val officialMod = ExternalModItem(
                     id = officialFileName,
                     name = "NINMODS External",
                     fileName = officialZipName,
                     downloadPackage = "external/$officialZipName",
                     file = officialFile,
-                    isDownloaded = officialFile.exists()
+                    isDownloaded = officialFile.exists() && officialFile.length() > 0L
                 )
 
                 // Optional custom external scripts from sdcard
