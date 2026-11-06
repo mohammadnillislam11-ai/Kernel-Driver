@@ -218,7 +218,7 @@ fun ExternalModsCard(
 
     // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG (Verify button) ───
     if (showLicenseDialog) {
-        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
         ApatchLicenseKeyDialog(
             initialKey = initialKey,
             isSubmitting = isSubmittingLicense,
@@ -240,8 +240,10 @@ fun ExternalModsCard(
                     )
                     if (activationResult.isSuccess) {
                         val licInfo = activationResult.getOrNull()
-                        sessionManager?.activeLicenseKey = submittedKey
-                        sessionManager?.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
+                        sessionManager?.let { sm ->
+                            sm.activeLicenseKey = submittedKey
+                            sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
+                        }
                     }
 
                     // Feed submitted license into running process stdin
