@@ -53,11 +53,8 @@ import com.andorid.ninmods.data.InteractiveProcessBridge
 import com.andorid.ninmods.data.ModDownloader
 import com.andorid.ninmods.data.SessionManager
 import com.andorid.ninmods.data.ShellExecutor
-import com.andorid.ninmods.ui.dialogs.ApatchConfirmDownloadDialog
-import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
-import com.andorid.ninmods.ui.dialogs.ApatchLicenseKeyDialog
-import com.andorid.ninmods.ui.dialogs.ApatchRootRequiredDialog
-import com.andorid.ninmods.ui.dialogs.ApatchWarningDialog
+import com.andorid.ninmods.ui.dialogs.ApatchUnifiedModDialog
+import com.andorid.ninmods.ui.dialogs.UnifiedModDialogState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,30 +85,29 @@ fun ExternalModsCard(
     var mods by remember { mutableStateOf<List<ExternalModItem>>(emptyList()) }
     var activeModId by remember { mutableStateOf<String?>(null) }
 
-    // Dialog state holders
-    var confirmDownloadMod by remember { mutableStateOf<ExternalModItem?>(null) }
-    var downloadingMod by remember { mutableStateOf<ExternalModItem?>(null) }
-    var downloadProgress by remember { mutableIntStateOf(0) }
-
-    var stopConfirmMod by remember { mutableStateOf<ExternalModItem?>(null) }
-
-    var showLicenseDialog by remember { mutableStateOf(false) }
-    var isSubmittingLicense by remember { mutableStateOf(false) }
-    var licenseErrorMessage by remember { mutableStateOf<String?>(null) }
-
-    var showRootRequiredDialog by remember { mutableStateOf(false) }
-    var rootErrorMessage by remember { mutableStateOf<String?>(null) }
+    // Unified Dialog state holders
+    var unifiedDialogState by remember { mutableStateOf<UnifiedModDialogState?>(null) }
+    var selectedModForAction by remember { mutableStateOf<ExternalModItem?>(null) }
 
     // Automatically trigger license pop-up dialog when stdin prompt is detected in running binary
     LaunchedEffect(isLicensePromptTriggered) {
         if (isLicensePromptTriggered) {
-            showLicenseDialog = true
+            val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+            unifiedDialogState = UnifiedModDialogState.LicenseAuth(
+                initialKey = initialKey,
+                isSubmitting = false,
+                errorMessage = null,
+                isVerified = false
+            )
         }
     }
 
     LaunchedEffect(isReadyToStart) {
         if (isReadyToStart) {
-            isSubmittingLicense = false
+            val current = unifiedDialogState
+            if (current is UnifiedModDialogState.LicenseAuth) {
+                unifiedDialogState = current.copy(isSubmitting = false, isVerified = true)
+            }
         }
     }
 
@@ -183,128 +179,132 @@ fun ExternalModsCard(
         refreshMods()
     }
 
-    // ─── 0. APATCH CONFIRM DOWNLOAD POP-UP DIALOG ───
-    confirmDownloadMod?.let { mod ->
-        ApatchConfirmDownloadDialog(
-            modName = mod.name,
-            onDismiss = { confirmDownloadMod = null },
-            onConfirmDownload = {
-                confirmDownloadMod = null
-                downloadingMod = mod
-                downloadProgress = 0
-                scope.launch {
-                    val result = ModDownloader.downloadMod(
-                        context = context,
-                        downloadUrl = mod.downloadPackage,
-                        targetDir = mod.file.parentFile ?: File(context.filesDir, "external_mods"),
-                        fileName = mod.fileName,
-                        onProgress = { p -> downloadProgress = p }
+    fun launchMod(mod: ExternalModItem) {
+        selectedModForAction = mod
+        scope.launch {
+            val isRooted = withContext(Dispatchers.IO) {
+                ShellExecutor.isRootAvailable()
+            }
+            if (!isRooted) {
+                unifiedDialogState = UnifiedModDialogState.RootRequired(
+                    "Binary failed to load: This device is not rooted or Superuser (Root) access was denied. Superuser permissions (APatch, KernelSU, or Magisk) are mandatory to allocate RAM memory buffers and render the overlay."
+                )
+                return@launch
+            }
+
+            activeModId = mod.id
+            Toast.makeText(context, "Initializing ${mod.name}...", Toast.LENGTH_SHORT).show()
+            val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+            processBridge.start(
+                executableFile = mod.file,
+                deviceHwid = deviceHwid,
+                licenseKey = "", // Force prompt detection so terminal opens LicenseAuth dialog
+                onLicensePrompt = {
+                    val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+                    unifiedDialogState = UnifiedModDialogState.LicenseAuth(
+                        initialKey = initialKey,
+                        isSubmitting = false,
+                        errorMessage = null,
+                        isVerified = false
                     )
-                    downloadingMod = null
-                    if (result.isSuccess) {
-                        Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
-                        refreshMods()
-                    } else {
-                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
-                    }
+                },
+                onError = { errMsg ->
+                    unifiedDialogState = UnifiedModDialogState.RootRequired(
+                        "Binary failed to load: $errMsg\n\nPlease ensure Superuser permission is granted to NINMODS in your root manager (APatch/KernelSU/Magisk)."
+                    )
+                    activeModId = null
                 }
-            }
-        )
+            )
+        }
     }
 
-    // ─── 1. APATCH ANIMATED DOWNLOAD DIALOG ───
-    downloadingMod?.let { mod ->
-        ApatchDownloadDialog(
-            modName = mod.name,
-            progress = downloadProgress,
-            onCancel = {
-                downloadingMod = null
-                downloadProgress = 0
+    fun startDownload(mod: ExternalModItem) {
+        selectedModForAction = mod
+        unifiedDialogState = UnifiedModDialogState.Downloading(mod.name, 0)
+        scope.launch {
+            val result = ModDownloader.downloadMod(
+                context = context,
+                downloadUrl = mod.downloadPackage,
+                targetDir = mod.file.parentFile ?: File(context.filesDir, "external_mods"),
+                fileName = mod.fileName,
+                onProgress = { p ->
+                    unifiedDialogState = UnifiedModDialogState.Downloading(mod.name, p)
+                }
+            )
+            if (result.isSuccess) {
+                Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
+                refreshMods()
+                launchMod(mod)
+            } else {
+                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                unifiedDialogState = null
             }
-        )
+        }
     }
 
-    // ─── 2. APATCH STOP CONFIRMATION DIALOG (Cancel & Stop buttons) ───
-    stopConfirmMod?.let { mod ->
-        ApatchWarningDialog(
-            modName = mod.name,
-            title = "Stop Mod",
-            message = "Do you want to stop \"${mod.name}\" and unload it from memory?",
-            confirmButtonText = "Stop",
-            onDismiss = { stopConfirmMod = null },
-            onConfirmLaunch = {
-                stopConfirmMod = null
-                processBridge.stop()
-                activeModId = null
-                Toast.makeText(context, "${mod.name} stopped.", Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
-
-    // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG (Verify -> Start buttons) ───
-    if (showLicenseDialog) {
-        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
-        ApatchLicenseKeyDialog(
-            initialKey = initialKey,
-            isSubmitting = isSubmittingLicense,
-            errorMessage = licenseErrorMessage,
-            isVerified = isReadyToStart,
+    // ─── UNIFIED APATCH MOD DIALOG (Confirm -> Downloading -> Root/License -> Start) ───
+    unifiedDialogState?.let { state ->
+        ApatchUnifiedModDialog(
+            state = state,
             onDismiss = {
-                showLicenseDialog = false
-                isSubmittingLicense = false
-                licenseErrorMessage = null
-                processBridge.stop()
-                activeModId = null
+                if (state is UnifiedModDialogState.LicenseAuth) {
+                    processBridge.stop()
+                    activeModId = null
+                }
+                unifiedDialogState = null
+            },
+            onConfirmDownload = {
+                selectedModForAction?.let { startDownload(it) }
+            },
+            onCancelDownload = {
+                unifiedDialogState = null
             },
             onSubmitKey = { submittedKey ->
-                isSubmittingLicense = true
-                licenseErrorMessage = null
-                scope.launch {
-                    val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
-                    // Synchronize and verify with server
-                    val activationResult = com.andorid.ninmods.network.AuthApiClient.activateLicense(
-                        licenseKey = submittedKey,
-                        hwid = deviceHwid
-                    )
-                    if (activationResult.isSuccess) {
-                        val licInfo = activationResult.getOrNull()
-                        sessionManager?.let { sm ->
-                            sm.activeLicenseKey = submittedKey
-                            sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
+                if (state is UnifiedModDialogState.LicenseAuth) {
+                    unifiedDialogState = state.copy(isSubmitting = true, errorMessage = null)
+                    scope.launch {
+                        val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                        val activationResult = com.andorid.ninmods.network.AuthApiClient.activateLicense(
+                            licenseKey = submittedKey,
+                            hwid = deviceHwid
+                        )
+                        if (activationResult.isSuccess) {
+                            val licInfo = activationResult.getOrNull()
+                            sessionManager?.let { sm ->
+                                sm.activeLicenseKey = submittedKey
+                                sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
+                            }
+                            val sent = processBridge.sendInput(submittedKey)
+                            if (!sent) {
+                                unifiedDialogState = state.copy(
+                                    isSubmitting = false,
+                                    errorMessage = "Failed to communicate with running background process."
+                                )
+                            }
+                        } else {
+                            unifiedDialogState = state.copy(
+                                isSubmitting = false,
+                                errorMessage = activationResult.exceptionOrNull()?.message
+                                    ?: "License verification failed on server."
+                            )
                         }
-
-                        // Feed submitted license into running process stdin
-                        val sent = processBridge.sendInput(submittedKey)
-                        if (!sent) {
-                            isSubmittingLicense = false
-                            licenseErrorMessage = "Failed to communicate with running background process."
-                        }
-                        // Binary will verify and print readiness, setting isReadyToStart = true
-                    } else {
-                        isSubmittingLicense = false
-                        licenseErrorMessage = activationResult.exceptionOrNull()?.message 
-                            ?: "License verification failed on server."
                     }
                 }
             },
             onStartMod = {
                 scope.launch {
                     processBridge.sendInput("START")
-                    showLicenseDialog = false
+                    unifiedDialogState = null
                     Toast.makeText(context, "Loading floating engine into RAM...", Toast.LENGTH_SHORT).show()
                 }
-            }
-        )
-    }
-
-    // ─── 4. APATCH ROOT PRIVILEGE REQUIRED POP-UP DIALOG ───
-    if (showRootRequiredDialog) {
-        ApatchRootRequiredDialog(
-            modName = "External Engine",
-            errorMessage = rootErrorMessage,
-            onDismiss = {
-                showRootRequiredDialog = false
-                rootErrorMessage = null
+            },
+            onConfirmStop = {
+                unifiedDialogState = null
+                processBridge.stop()
+                activeModId = null
+                selectedModForAction?.let {
+                    Toast.makeText(context, "${it.name} stopped.", Toast.LENGTH_SHORT).show()
+                }
             }
         )
     }
@@ -387,41 +387,16 @@ fun ExternalModsCard(
                                 .fillMaxWidth()
                                 .clickable {
                                     if (!mod.isDownloaded) {
-                                        // 1. Not downloaded -> Show download confirmation dialog
-                                        confirmDownloadMod = mod
+                                        // 1. Not downloaded -> Show unified download confirmation dialog
+                                        selectedModForAction = mod
+                                        unifiedDialogState = UnifiedModDialogState.ConfirmDownload(mod.name)
                                     } else if (isRunning) {
                                         // 2. Already active -> Ask to stop
-                                        stopConfirmMod = mod
+                                        selectedModForAction = mod
+                                        unifiedDialogState = UnifiedModDialogState.StopConfirm(mod.name)
                                     } else {
-                                        // 3. Downloaded -> Verify Root privilege before execution
-                                        scope.launch {
-                                            val isRooted = withContext(Dispatchers.IO) {
-                                                ShellExecutor.isRootAvailable()
-                                            }
-                                            if (!isRooted) {
-                                                rootErrorMessage = "Binary failed to load: This device is not rooted or Superuser (Root) access was denied. Superuser permissions (APatch, KernelSU, or Magisk) are mandatory to allocate RAM memory buffers and render the overlay."
-                                                showRootRequiredDialog = true
-                                                return@launch
-                                            }
-
-                                            activeModId = mod.id
-                                            licenseErrorMessage = null
-                                            Toast.makeText(context, "Initializing ${mod.name}...", Toast.LENGTH_SHORT).show()
-                                            val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
-                                            processBridge.start(
-                                                executableFile = mod.file,
-                                                deviceHwid = deviceHwid,
-                                                licenseKey = "", // Force prompt detection so terminal opens ApatchLicenseKeyDialog
-                                                onLicensePrompt = {
-                                                    showLicenseDialog = true
-                                                },
-                                                onError = { errMsg ->
-                                                    rootErrorMessage = "Binary failed to load: $errMsg\n\nPlease ensure Superuser permission is granted to NINMODS in your root manager (APatch/KernelSU/Magisk)."
-                                                    showRootRequiredDialog = true
-                                                    activeModId = null
-                                                }
-                                            )
-                                        }
+                                        // 3. Downloaded -> Launch mod with root & license checks
+                                        launchMod(mod)
                                     }
                                 },
                             shape = RoundedCornerShape(16.dp),

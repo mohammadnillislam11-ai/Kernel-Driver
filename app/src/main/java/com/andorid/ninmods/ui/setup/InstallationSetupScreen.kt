@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
@@ -39,7 +41,6 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,14 +54,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -72,9 +70,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * APatch / NINMODS Official Installation & Initial Permission Setup Screen.
- * Presented automatically to users upon initial launch to configure platform permissions.
- * Users can grant permissions individually or choose to skip/ignore setup.
+ * APatch Official Installation & Setup Screen.
+ * Fully unified with APatch UI component hierarchy and typography.
+ * Allows users to review, grant, or ignore permissions on initial launch.
  */
 @Composable
 fun InstallationSetupScreen(
@@ -90,6 +88,7 @@ fun InstallationSetupScreen(
     var isOverlayGranted by remember { mutableStateOf(false) }
     var isStorageGranted by remember { mutableStateOf(false) }
     var isNotificationGranted by remember { mutableStateOf(false) }
+    var rootManagerName by remember { mutableStateOf("Detecting...") }
 
     fun checkAllPermissions() {
         scope.launch {
@@ -98,6 +97,8 @@ fun InstallationSetupScreen(
                 ShellExecutor.isRootAvailable()
             }
             isRootGranted = rootOk
+            val detector = withContext(Dispatchers.IO) { RootDetector.detect(context) }
+            rootManagerName = detector.managerName
 
             // 2. Overlay / Window check
             isOverlayGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -130,7 +131,7 @@ fun InstallationSetupScreen(
         }
     }
 
-    // Automatically re-evaluate permissions when user returns from settings (ON_RESUME)
+    // Real-time re-check when user returns from settings
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -143,290 +144,402 @@ fun InstallationSetupScreen(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ─── APatch Header Card ───
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // App Brand Logo Container
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                modifier = Modifier.size(76.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_n),
-                        contentDescription = "App Logo",
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Installation & Setup",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Grant necessary permissions for seamless kernel driver operations, memory engine allocation, and floating overlay rendering.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // ─── 1. Superuser / Root Permission Card ───
-            SetupPermissionCard(
-                icon = Icons.Filled.Security,
-                title = "Superuser (Root) Access",
-                description = "Required to bind kernel driver nodes, allocate memory buffers, and run fileless scripts.",
-                isGranted = isRootGranted,
-                actionText = "Grant Root",
-                onGrant = {
-                    scope.launch {
-                        val granted = withContext(Dispatchers.IO) {
-                            ShellExecutor.executeRoot("id")
-                        }
-                        if (granted) {
-                            isRootGranted = true
-                            Toast.makeText(context, "Superuser access granted!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            val detector = RootDetector.detect(context)
-                            Toast.makeText(
-                                context,
-                                "Root request denied or no root manager found (${detector.managerName}).",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // ─── 2. Display Over Other Apps (Overlay) Card ───
-            SetupPermissionCard(
-                icon = Icons.Filled.Layers,
-                title = "Display Over Other Apps",
-                description = "Required to render the high-performance 60 FPS floating menu pill above target games.",
-                isGranted = isOverlayGranted,
-                actionText = "Grant Overlay",
-                onGrant = {
-                    try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            val intent = Intent(
-                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                Uri.parse("package:${context.packageName}")
-                            )
-                            context.startActivity(intent)
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Failed to open overlay settings: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // ─── 3. All Files Access Card ───
-            SetupPermissionCard(
-                icon = Icons.Filled.Folder,
-                title = "All Files Management",
-                description = "Enables downloading, extracting (.zip to .sh), and managing external engine payloads.",
-                isGranted = isStorageGranted,
-                actionText = "Grant Storage",
-                onGrant = {
-                    try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            val intent = Intent(
-                                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                Uri.parse("package:${context.packageName}")
-                            )
-                            context.startActivity(intent)
-                        } else {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
-                            context.startActivity(intent)
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Failed to open storage settings: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // ─── 4. Notifications Permission Card ───
-            SetupPermissionCard(
-                icon = Icons.Filled.Notifications,
-                title = "Background Notifications",
-                description = "Displays background daemon heartbeat status and mod download progress.",
-                isGranted = isNotificationGranted,
-                actionText = "Grant",
-                onGrant = {
-                    try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            }
-                            context.startActivity(intent)
-                        } else {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
-                            context.startActivity(intent)
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Failed to open notification settings: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // ─── Primary Action: Complete Setup ───
-            Button(
-                onClick = onCompleteSetup,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Get Started",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_n),
+                            contentDescription = "Logo",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Installation & Setup",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Configure platform permissions for kernel driver optimization and floating overlay.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // ─── Secondary Action: Skip / Ignore Permissions ───
-            TextButton(
-                onClick = onSkipSetup,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Skip / Ignore Permissions for Now",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
 
-@Composable
-private fun SetupPermissionCard(
-    icon: ImageVector,
-    title: String,
-    description: String,
-    isGranted: Boolean,
-    actionText: String,
-    onGrant: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // ─── APatch Permission List Category ───
+        Text(
+            text = "REQUIRED PERMISSIONS & SYSTEM ROOT",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Surface(
-                shape = CircleShape,
-                color = if (isGranted) Color(0xFF2E7D32).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
-                modifier = Modifier.size(46.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Column {
+                // 1. Superuser / Root Access Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            scope.launch {
+                                val granted = withContext(Dispatchers.IO) { ShellExecutor.executeRoot("id") }
+                                if (granted) {
+                                    isRootGranted = true
+                                    Toast.makeText(context, "Superuser access granted!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Root manager: $rootManagerName (Access denied)", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
-                        imageVector = if (isGranted) Icons.Filled.CheckCircle else icon,
+                        imageVector = Icons.Filled.Security,
                         contentDescription = null,
-                        tint = if (isGranted) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
+                        tint = if (isRootGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
                         modifier = Modifier.size(24.dp)
                     )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Superuser (Root) Access",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isRootGranted) "Granted ($rootManagerName)" else "Required for RAM allocation ($rootManagerName)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isRootGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isRootGranted) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Granted",
+                            tint = Color(0xFF81C784),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    val granted = withContext(Dispatchers.IO) { ShellExecutor.executeRoot("id") }
+                                    if (granted) {
+                                        isRootGranted = true
+                                        Toast.makeText(context, "Root granted!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Root request denied ($rootManagerName)", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text(text = "Grant", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
+                // 2. Display Over Other Apps (Overlay) Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}")
+                                )
+                                context.startActivity(intent)
+                            }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Layers,
+                        contentDescription = null,
+                        tint = if (isOverlayGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Display Over Other Apps",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isOverlayGranted) "Active & Allowed" else "Required for floating menu overlay",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isOverlayGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isOverlayGranted) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Granted",
+                            tint = Color(0xFF81C784),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    )
+                                    context.startActivity(intent)
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text(text = "Grant", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
+                // 3. Storage / All Files Management Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    Uri.parse("package:${context.packageName}")
+                                )
+                                context.startActivity(intent)
+                            } else {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Folder,
+                        contentDescription = null,
+                        tint = if (isStorageGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Storage & Files Management",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isStorageGranted) "Full Access Granted" else "Download, extract (.zip) & load engine",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isStorageGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isStorageGranted) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Granted",
+                            tint = Color(0xFF81C784),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    )
+                                    context.startActivity(intent)
+                                } else {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text(text = "Grant", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
+                // 4. Notifications Permission Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                }
+                                context.startActivity(intent)
+                            }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Notifications,
+                        contentDescription = null,
+                        tint = if (isNotificationGranted) Color(0xFF81C784) else Color(0xFFFFB4AB),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Background Notifications",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isNotificationGranted) "Enabled" else "Background daemon alerts & download tracking",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isNotificationGranted) Color(0xFF81C784) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isNotificationGranted) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Granted",
+                            tint = Color(0xFF81C784),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text(text = "Grant", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.width(14.dp))
+        // ─── Actions Category ───
+        Text(
+            text = "SETUP COMPLETION",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp)
+        )
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 16.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            if (isGranted) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF2E7D32).copy(alpha = 0.2f)
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Button(
+                    onClick = onCompleteSetup,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text(
-                        text = "Granted",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        text = "Complete Setup & Continue",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-            } else {
-                OutlinedButton(
-                    onClick = onGrant,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.height(36.dp)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = onSkipSetup,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(
-                        text = actionText,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
+                        text = "Skip / Ignore Permissions for Now",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }

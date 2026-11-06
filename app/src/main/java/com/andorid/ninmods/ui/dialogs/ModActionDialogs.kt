@@ -1,6 +1,7 @@
 package com.andorid.ninmods.ui.dialogs
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +57,494 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+
+/**
+ * APatch Unified Mod Dialog State Machine.
+ * Unifies Confirm Download, Downloading Progress, Root Check Alert, License Key Authentication,
+ * and Stop Mod workflows into a single cohesive APatch dialog without flickering.
+ */
+sealed interface UnifiedModDialogState {
+    data class ConfirmDownload(val modName: String) : UnifiedModDialogState
+    data class Downloading(val modName: String, val progress: Int) : UnifiedModDialogState
+    data class RootRequired(val errorMessage: String?) : UnifiedModDialogState
+    data class LicenseAuth(
+        val initialKey: String,
+        val isSubmitting: Boolean = false,
+        val errorMessage: String? = null,
+        val isVerified: Boolean = false
+    ) : UnifiedModDialogState
+    data class StopConfirm(val modName: String) : UnifiedModDialogState
+}
+
+/**
+ * Official Unified APatch Dialog Component.
+ * Implements the single-dialog pattern requested by user: one persistent Material 3 dialog
+ * that smoothly transitions its visual state without opening/closing multiple dialog windows.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ApatchUnifiedModDialog(
+    state: UnifiedModDialogState,
+    onDismiss: () -> Unit,
+    onConfirmDownload: () -> Unit = {},
+    onCancelDownload: () -> Unit = {},
+    onSubmitKey: (String) -> Unit = {},
+    onStartMod: () -> Unit = {},
+    onConfirmStop: () -> Unit = {}
+) {
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = state !is UnifiedModDialogState.Downloading,
+            dismissOnClickOutside = state !is UnifiedModDialogState.Downloading
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth(0.92f)
+        ) {
+            Crossfade(targetState = state, label = "UnifiedDialogTransition") { currentState ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    when (currentState) {
+                        is UnifiedModDialogState.ConfirmDownload -> {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(56.dp)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CloudDownload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Download External Mod",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Do you want to download \"${currentState.modName}\" from the official server?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = onDismiss,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(46.dp),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Text(text = "Cancel")
+                                }
+
+                                Button(
+                                    onClick = onConfirmDownload,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(46.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Text(text = "Download", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        is UnifiedModDialogState.Downloading -> {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(60.dp)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CloudDownload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(30.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Downloading Mod",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = currentState.modName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            if (currentState.progress > 0) {
+                                LinearProgressIndicator(
+                                    progress = { currentState.progress / 100f },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surface
+                                )
+                            } else {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(36.dp),
+                                    strokeWidth = 3.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = if (currentState.progress > 0) "${currentState.progress}% completed" else "Connecting to download mirror...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            TextButton(
+                                onClick = onCancelDownload,
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text(text = "Cancel", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+
+                        is UnifiedModDialogState.RootRequired -> {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                modifier = Modifier.size(60.dp)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Root Privilege Required",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = currentState.errorMessage ?: "Binary failed to load: This in-memory engine requires Superuser (Root) privileges (APatch, KernelSU, or Magisk) to allocate memory buffers and render the screen overlay. Your device does not have root access or permission was denied.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Button(
+                                onClick = onDismiss,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Text(text = "Understood", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        is UnifiedModDialogState.LicenseAuth -> {
+                            var keyText by remember(currentState.initialKey) { mutableStateOf(currentState.initialKey) }
+                            var isKeyVisible by remember { mutableStateOf(false) }
+
+                            Surface(
+                                shape = CircleShape,
+                                color = if (currentState.isVerified) Color(0xFF2E7D32).copy(alpha = 0.2f) else MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(56.dp)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (currentState.isVerified) Icons.Filled.CheckCircle else Icons.Filled.Key,
+                                        contentDescription = null,
+                                        tint = if (currentState.isVerified) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = if (currentState.isVerified) "Authentication Successful" else "Authentication Required",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = if (currentState.isVerified)
+                                    "License key verified! In-memory engine authorized and ready to load into RAM."
+                                else
+                                    "NINMODS Official In-Memory Engine requires an active commercial license key.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            if (!currentState.isVerified) {
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                OutlinedTextField(
+                                    value = keyText,
+                                    onValueChange = { keyText = it },
+                                    label = { Text("License Key") },
+                                    singleLine = true,
+                                    visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                                            Icon(
+                                                imageVector = if (isKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                                contentDescription = if (isKeyVisible) "Hide Key" else "Show Key",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = {
+                                            if (!currentState.isSubmitting && keyText.trim().isNotEmpty()) {
+                                                onSubmitKey(keyText.trim())
+                                            }
+                                        }
+                                    )
+                                )
+
+                                if (currentState.errorMessage != null) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = currentState.errorMessage,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            if (currentState.isVerified) {
+                                Button(
+                                    onClick = onStartMod,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2E7D32),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.PlayArrow,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Start",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = onDismiss,
+                                        enabled = !currentState.isSubmitting,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(46.dp),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Text(text = "Cancel")
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            if (keyText.trim().isNotEmpty()) {
+                                                onSubmitKey(keyText.trim())
+                                            }
+                                        },
+                                        enabled = !currentState.isSubmitting && keyText.trim().isNotEmpty(),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(46.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            if (currentState.isSubmitting) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(18.dp),
+                                                    color = MaterialTheme.colorScheme.onPrimary,
+                                                    strokeWidth = 2.dp
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = "Verifying...",
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "Verify",
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is UnifiedModDialogState.StopConfirm -> {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(56.dp)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.PlayArrow,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(30.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Stop Mod",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Do you want to stop \"${currentState.modName}\" and unload it from memory?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = onDismiss,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(46.dp),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Text(text = "Cancel")
+                                }
+
+                                Button(
+                                    onClick = onConfirmStop,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(46.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Text(text = "Stop", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * APatch Official Download Confirmation Dialog.
