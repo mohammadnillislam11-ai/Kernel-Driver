@@ -86,6 +86,7 @@ class InteractiveProcessBridge(
                     out.writeBytes("export NIN_LICENSE_KEY='$licenseKey'\n")
                 }
                 out.writeBytes("export NIN_SERVER_URL='${com.andorid.ninmods.config.AppConfig.BASE_URL.trimEnd('/')}'\n")
+                out.writeBytes("export LD_LIBRARY_PATH='/apex/com.android.i18n/lib64:/apex/com.android.runtime/lib64:/system/lib64:/vendor/lib64:/apex/com.android.i18n/lib:/apex/com.android.runtime/lib:/system/lib:/vendor/lib:'\"\$LD_LIBRARY_PATH\"\n")
 
                 // Launch using exec so the su process is directly replaced by the mod binary
                 if (executableFile.name.endsWith(".sh")) {
