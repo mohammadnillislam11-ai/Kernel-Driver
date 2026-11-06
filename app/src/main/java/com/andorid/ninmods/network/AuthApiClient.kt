@@ -252,20 +252,44 @@ object AuthApiClient {
     }
 
     /**
-     * GET /api/v2/profile (Fetch server-authoritative profile data)
+     * GET /api/v2/profile (Fetch server-authoritative profile data with ETag support)
      */
-    suspend fun getProfile(apiKey: String): Result<UserProfileData> = withContext(Dispatchers.IO) {
+    suspend fun getProfileWithEtag(
+        apiKey: String,
+        cachedEtag: String? = null
+    ): Result<Triple<UserProfileData?, String?, Boolean>> = withContext(Dispatchers.IO) {
         try {
-            val headers = mapOf(
+            val headers = mutableMapOf(
                 "Authorization" to "Bearer ${apiKey.trim()}",
                 "api-key" to apiKey.trim()
             )
+            if (!cachedEtag.isNullOrBlank()) {
+                headers["If-None-Match"] = cachedEtag
+            }
 
-            val (code, responseBody) = sendGetRequest(AppConfig.PROFILE_URL, headers)
-            val json = parseJsonResponse(responseBody, code)
+            val response = sendGetRequest(AppConfig.PROFILE_URL, headers)
+            val code = response.code
 
-            if (code in 200..299 && (json.optBoolean("success", false) || json.has("profile"))) {
-                val prof = json.optJSONObject("profile") ?: json
+            // 304 Not Modified: Payload unchanged on server
+            if (code == 304) {
+                return@withContext Result.success(Triple(null, cachedEtag, true))
+            }
+
+            val json = parseJsonResponse(response.body, code)
+            val isSuccess = code in 200..299 && (
+                json.optBoolean("success", false) ||
+                json.optString("status") == "success" ||
+                json.has("profile") ||
+                json.has("data")
+            )
+
+            if (isSuccess) {
+                val dataObj = json.optJSONObject("data")
+                val prof = json.optJSONObject("profile") 
+                    ?: dataObj?.optJSONObject("profile") 
+                    ?: dataObj 
+                    ?: json
+
                 val activeLicJson = prof.optJSONObject("active_license")
                 val activeLic = if (activeLicJson != null) {
                     ActiveLicenseInfo(
@@ -295,7 +319,8 @@ object AuthApiClient {
                     totalKeys = statsJson?.optInt("total_keys", 0) ?: 0,
                     activeKeys = statsJson?.optInt("active_keys", 0) ?: 0
                 )
-                Result.success(data)
+                val newEtag = response.etag
+                Result.success(Triple(data, newEtag, false))
             } else {
                 val errorMsg = json.optString("error", json.optString("message", "Failed to fetch profile (HTTP $code)"))
                 Result.failure(Exception(errorMsg))
@@ -303,6 +328,13 @@ object AuthApiClient {
         } catch (e: Exception) {
             Result.failure(Exception(sanitizeNetworkException(e)))
         }
+    }
+
+    /**
+     * Backward-compatible getProfile call routed via UserRepository for caching
+     */
+    suspend fun getProfile(apiKey: String): Result<UserProfileData> {
+        return com.andorid.ninmods.data.UserRepository.getProfile(apiKey)
     }
 
     /**
@@ -315,8 +347,8 @@ object AuthApiClient {
             val json = parseJsonResponse(responseBody, code)
             if (code in 200..299 && (json.optBoolean("success", false) || json.has("version_name"))) {
                 val data = AppVersionData(
-                    versionName = json.optString("version_name", "1.2.6"),
-                    versionCode = json.optInt("version_code", 126),
+                    versionName = json.optString("version_name", "1.2.8"),
+                    versionCode = json.optInt("version_code", 128),
                     downloadUrl = json.optString("download_url", ""),
                     changelog = json.optString("changelog", ""),
                     isForceUpdate = json.optBoolean("is_force_update", false)
@@ -534,10 +566,18 @@ object AuthApiClient {
         return Pair(code, responseBody)
     }
 
+    data class HttpResponse(
+        val code: Int,
+        val body: String,
+        val headers: Map<String, String> = emptyMap()
+    ) {
+        val etag: String? get() = headers["etag"]
+    }
+
     private fun sendGetRequest(
         urlString: String,
         extraHeaders: Map<String, String> = emptyMap()
-    ): Pair<Int, String> {
+    ): HttpResponse {
         val url = URL(urlString)
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "GET"
@@ -551,6 +591,13 @@ object AuthApiClient {
         }
 
         val code = conn.responseCode
+        val headerMap = mutableMapOf<String, String>()
+        for ((k, v) in conn.headerFields) {
+            if (k != null && v.isNotEmpty()) {
+                headerMap[k.lowercase()] = v[0]
+            }
+        }
+
         val inputStream = if (code in 200..299) conn.inputStream else conn.errorStream
 
         val responseBody = if (inputStream != null) {
@@ -562,6 +609,6 @@ object AuthApiClient {
         }
 
         conn.disconnect()
-        return Pair(code, responseBody)
+        return HttpResponse(code, responseBody, headerMap)
     }
 }

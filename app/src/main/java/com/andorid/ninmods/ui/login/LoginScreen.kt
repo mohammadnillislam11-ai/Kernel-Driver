@@ -163,6 +163,21 @@ private fun LoginContent(
                 isLoading = false
                 if (result.isSuccess) {
                     val auth = result.getOrThrow()
+                    val initialProfile = com.andorid.ninmods.network.UserProfileData(
+                        id = auth.userId,
+                        username = auth.username,
+                        email = auth.email,
+                        role = auth.role,
+                        balance = auth.balance,
+                        spent = 0.0,
+                        currency = auth.currency,
+                        status = "active",
+                        apiKey = auth.apiKey,
+                        createdAt = "",
+                        activeLicense = auth.activeLicense
+                    )
+                    com.andorid.ninmods.data.UserRepository.seedProfile(initialProfile)
+
                     onSuccess(
                         auth.email.ifBlank { email.trim() },
                         auth.username.ifBlank { email.substringBefore("@") },
@@ -350,21 +365,36 @@ private fun LoginContent(
             shape = RoundedCornerShape(20.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                disabledContentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.5.dp
-                )
-            } else {
-                Text(
-                    text = "Login",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Logging in...",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text(
+                        text = "Login",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             }
         }
 

@@ -20,15 +20,18 @@ class SessionManager(context: Context) {
     }
 
     var licenseExpiryMillis: Long
-        get() {
-            var exp = prefs.getLong(KEY_LICENSE_EXPIRY, 0L)
-            if (exp == 0L) {
-                exp = System.currentTimeMillis() + (24 * 60 * 60 * 1000L)
-                prefs.edit().putLong(KEY_LICENSE_EXPIRY, exp).apply()
-            }
-            return exp
-        }
+        get() = prefs.getLong(KEY_LICENSE_EXPIRY, 0L)
         set(value) = prefs.edit().putLong(KEY_LICENSE_EXPIRY, value).apply()
+
+    fun clearLicense() {
+        prefs.edit()
+            .remove(KEY_LICENSE_EXPIRY)
+            .remove("server_remaining_sec")
+            .remove("sync_uptime_ms")
+            .remove("sync_wall_time_ms")
+            .remove("active_license_key")
+            .apply()
+    }
 
     /**
      * Server-Authoritative License Duration (Immune to Device Clock Tampering).

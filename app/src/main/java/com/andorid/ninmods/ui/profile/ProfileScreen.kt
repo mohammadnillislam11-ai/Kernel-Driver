@@ -22,11 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Verified
@@ -79,8 +79,10 @@ fun ProfileScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var profileData by remember { mutableStateOf<UserProfileData?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    // 1. Immediately hydrate with cached profile in memory (0ms latency, instant UI render)
+    val cached = com.andorid.ninmods.data.UserRepository.getCachedProfile()
+    var profileData by remember { mutableStateOf<UserProfileData?>(cached) }
+    var isLoading by remember { mutableStateOf(cached == null) }
     var fetchError by remember { mutableStateOf<String?>(null) }
 
     var showChangePasswordDialog by remember { mutableStateOf(false) }
@@ -91,9 +93,11 @@ fun ProfileScreen(
     var passwordError by remember { mutableStateOf<String?>(null) }
     var isUpdatingPassword by remember { mutableStateOf(false) }
 
-    fun refreshProfile() {
+    fun refreshProfile(forceRefresh: Boolean = false) {
         scope.launch {
-            isLoading = true
+            if (profileData == null) {
+                isLoading = true
+            }
             fetchError = null
             val token = sessionManager.authToken ?: ""
             if (token.isBlank()) {
@@ -102,29 +106,33 @@ fun ProfileScreen(
                 return@launch
             }
 
-            AuthApiClient.getProfile(token)
+            com.andorid.ninmods.data.UserRepository.getProfile(token, forceRefresh = forceRefresh)
                 .onSuccess { data ->
                     profileData = data
                     sessionManager.userName = data.username
                     sessionManager.userEmail = data.email
                     sessionManager.userRole = data.role
-                    sessionManager.userBalance = data.balance
-                    sessionManager.userSpent = data.spent
                     if (data.activeLicense != null) {
                         sessionManager.serverRemainingSeconds = data.activeLicense.remainingSeconds
                         sessionManager.activeLicenseKey = data.activeLicense.licenseKey
+                    } else {
+                        sessionManager.clearLicense()
                     }
                     isLoading = false
                 }
                 .onFailure { err ->
                     isLoading = false
-                    fetchError = err.message ?: "Failed to connect to backend server."
+                    if (profileData == null) {
+                        fetchError = err.message ?: "Failed to connect to backend server."
+                    }
                 }
         }
     }
 
     LaunchedEffect(Unit) {
-        refreshProfile()
+        // High-Performance In-Memory Stale-While-Revalidate:
+        // If data was fetched within the last 60s, uses memory cache with zero server hit.
+        refreshProfile(forceRefresh = false)
     }
 
     Column(
@@ -153,7 +161,7 @@ fun ProfileScreen(
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     IconButton(
-                        onClick = { refreshProfile() },
+                        onClick = { refreshProfile(forceRefresh = true) },
                         modifier = Modifier.align(Alignment.TopEnd)
                     ) {
                         Icon(
@@ -281,69 +289,7 @@ fun ProfileScreen(
             }
         }
 
-        // Server Billing / Wallet Card (USD Server Authoritative)
-        Text(
-            text = "WALLET & BILLING (SERVER-AUTHORITATIVE)",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp)
-        )
-
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AccountBalanceWallet,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(26.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Account Balance",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        val bal = profileData?.balance ?: sessionManager.userBalance
-                        Text(
-                            text = String.format(Locale.US, "$%.2f USD", bal),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Total Spent",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        val spnt = profileData?.spent ?: sessionManager.userSpent
-                        Text(
-                            text = String.format(Locale.US, "$%.2f USD", spnt),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-        }
-
-        // License Expiration Digital Monotonic Clock Card
+        // License Expiration Digital Monotonic Clock Card (Live Server Counter)
         LicenseClockCard(sessionManager = sessionManager)
 
         // Server Active License Details Card
@@ -487,11 +433,28 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // Change Password Dialog (Direct Backend API Integration)
+    // Change Password Dialog (APatch Official Standard UI)
     if (showChangePasswordDialog) {
         AlertDialog(
             onDismissRequest = {
                 if (!isUpdatingPassword) showChangePasswordDialog = false
+            },
+            shape = RoundedCornerShape(28.dp),
+            icon = {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.LockReset,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
             },
             title = {
                 Text(
@@ -503,7 +466,7 @@ fun ProfileScreen(
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Text(
                         text = "Enter a new secure password for your account.",
@@ -517,7 +480,7 @@ fun ProfileScreen(
                         label = { Text("New Password") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
@@ -535,7 +498,7 @@ fun ProfileScreen(
                         label = { Text("Confirm New Password") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
@@ -582,6 +545,7 @@ fun ProfileScreen(
                                     isUpdatingPassword = false
                                     showChangePasswordDialog = false
                                     sessionManager.userPassword = newPassword
+                                    com.andorid.ninmods.data.UserRepository.invalidate()
                                     Toast.makeText(context, "Password updated successfully!", Toast.LENGTH_LONG).show()
                                 }
                                 .onFailure { e ->
@@ -591,23 +555,45 @@ fun ProfileScreen(
                         }
                     },
                     enabled = !isUpdatingPassword,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                        disabledContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    if (isUpdatingPassword) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text("Save")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isUpdatingPassword) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Updating...",
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text(
+                                text = "Update Password",
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showChangePasswordDialog = false },
-                    enabled = !isUpdatingPassword
+                    enabled = !isUpdatingPassword,
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Text("Cancel")
                 }

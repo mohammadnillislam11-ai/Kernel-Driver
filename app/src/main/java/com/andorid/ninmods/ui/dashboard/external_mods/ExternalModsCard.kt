@@ -106,10 +106,10 @@ fun ExternalModsCard(
             mods = withContext(Dispatchers.IO) {
                 val internalDir = File(context.filesDir, "external_mods").also { if (!it.exists()) it.mkdirs() }
 
-                // 1. Core Built-In Official External Mods
+                // 1. Core Built-In Official External Mods (downloaded directly from backend server)
                 val defaultSpecs = listOf(
-                    Triple("External Overlay ESP", "external_overlay.sh", "ext_overlay.zip"),
-                    Triple("Dynamic Offset Hook", "offset_hook.sh", "offset_hook.zip")
+                    Triple("External Overlay ESP", "external_overlay.sh", "Kernel_Drivers.zip"),
+                    Triple("Dynamic Offset Hook", "offset_hook.sh", "Kernel_Drivers.zip")
                 )
 
                 val defaultItems = defaultSpecs.map { (name, fileName, downloadPkg) ->

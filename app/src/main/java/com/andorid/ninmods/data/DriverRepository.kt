@@ -23,7 +23,7 @@ class DriverRepository(private val context: Context) {
     }
 
     /**
-     * Extracts Kernel_Drivers.zip from assets to app private storage.
+     * Verifies local driver scripts. If missing, downloads Kernel_Drivers.zip directly from the backend server.
      */
     suspend fun extractDriversIfNeeded(onProgress: (String) -> Unit = {}): Boolean = withContext(Dispatchers.IO) {
         val qxDir = File(driversDir, "QX")
@@ -36,16 +36,19 @@ class DriverRepository(private val context: Context) {
         }
 
         try {
-            onProgress("Extracting NinMods kernel driver archives...")
-            extractZipAsset("Kernel_Drivers.zip")
-            try {
-                extractZipAsset("Kernel_Drivers_Master.zip")
-            } catch (ignored: Exception) {
+            onProgress("Downloading kernel drivers from server...")
+            val downloadRes = downloadDriversFromServer { percent ->
+                onProgress("Downloading drivers: $percent%")
             }
-            onProgress("Extraction complete.")
-            true
+            if (downloadRes.isSuccess) {
+                onProgress("Driver installation complete.")
+                true
+            } else {
+                onProgress("Download failed: ${downloadRes.exceptionOrNull()?.message}")
+                false
+            }
         } catch (e: Exception) {
-            onProgress("Extraction failed: ${e.message}")
+            onProgress("Driver setup failed: ${e.message}")
             false
         }
     }
@@ -85,32 +88,7 @@ class DriverRepository(private val context: Context) {
         }
     }
 
-    private fun extractZipAsset(assetName: String) {
-        try {
-            val inputStream = context.assets.open(assetName)
-            val zipInputStream = ZipInputStream(inputStream)
-            var entry = zipInputStream.nextEntry
 
-            while (entry != null) {
-                val outFile = File(driversDir, entry.name)
-                if (entry.isDirectory) {
-                    outFile.mkdirs()
-                } else {
-                    outFile.parentFile?.mkdirs()
-                    FileOutputStream(outFile).use { fos ->
-                        zipInputStream.copyTo(fos)
-                    }
-                    outFile.setExecutable(true, false)
-                    outFile.setReadable(true, false)
-                }
-                zipInputStream.closeEntry()
-                entry = zipInputStream.nextEntry
-            }
-            zipInputStream.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
 
     /**
      * Locates matching driver script files (.ko.sh or .sh) based on kernel version and mode (QX / RT).
@@ -121,7 +99,7 @@ class DriverRepository(private val context: Context) {
     suspend fun findMatchingDrivers(kernelVersion: String, mode: String): List<File> = withContext(Dispatchers.IO) {
         var targetFolder = File(driversDir, mode)
         if (!targetFolder.exists() || targetFolder.listFiles()?.isEmpty() != false) {
-            extractZipAsset("Kernel_Drivers.zip")
+            downloadDriversFromServer()
             targetFolder = File(driversDir, mode)
         }
 

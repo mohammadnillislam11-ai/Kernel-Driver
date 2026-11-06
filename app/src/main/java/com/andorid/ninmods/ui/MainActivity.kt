@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
                     sessionManager = sessionManager,
                     onSignOut = {
                         sessionManager.logout()
+                        com.andorid.ninmods.data.UserRepository.clear()
                         val intent = Intent(this@MainActivity, LoginActivity::class.java)
                         startActivity(intent)
                         finish()

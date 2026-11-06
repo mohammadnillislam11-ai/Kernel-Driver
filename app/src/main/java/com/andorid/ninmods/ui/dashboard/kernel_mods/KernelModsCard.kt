@@ -107,11 +107,11 @@ fun KernelModsCard(
             mods = withContext(Dispatchers.IO) {
                 val internalDir = File(context.filesDir, "kernel_mods").also { if (!it.exists()) it.mkdirs() }
 
-                // 1. Core Built-In Official Kernel Mods
+                // 1. Core Built-In Official Kernel Mods (downloaded directly from backend server)
                 val defaultSpecs = listOf(
-                    Triple("Kernel Core Engine", "run_ram.sh", "kernel_core.zip"),
-                    Triple("Driver Node Loader", "driver_loader.sh", "driver_loader.zip"),
-                    Triple("Kernel Security Bypass", "sec_bypass.sh", "sec_bypass.zip")
+                    Triple("Kernel Core Engine", "run_ram.sh", "Kernel_Drivers.zip"),
+                    Triple("Driver Node Loader", "driver_loader.sh", "Kernel_Drivers.zip"),
+                    Triple("Kernel Security Bypass", "sec_bypass.sh", "Kernel_Drivers.zip")
                 )
 
                 val defaultItems = defaultSpecs.map { (name, fileName, downloadPkg) ->

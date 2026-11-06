@@ -53,16 +53,24 @@ fun LicenseClockCard(
     // Server-Authoritative Live Seconds
     val totalSeconds = if (sessionManager.serverRemainingSeconds > 0L) {
         sessionManager.liveRemainingSeconds
-    } else {
+    } else if (sessionManager.licenseExpiryMillis > 0L) {
         val diffMillis = max(0L, sessionManager.licenseExpiryMillis - System.currentTimeMillis())
         diffMillis / 1000L
+    } else {
+        0L
     }
 
     val hours = totalSeconds / 3600L
     val minutes = (totalSeconds % 3600L) / 60L
     val seconds = totalSeconds % 60L
 
+    val hasKey = !sessionManager.activeLicenseKey.isNullOrBlank()
     val isExpired = totalSeconds == 0L
+    val statusText = when {
+        !isExpired -> "ACTIVE"
+        hasKey -> "EXPIRED"
+        else -> "NO LICENSE"
+    }
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
@@ -100,10 +108,14 @@ fun LicenseClockCard(
                 }
 
                 Text(
-                    text = if (isExpired) "EXPIRED" else "ACTIVE",
+                    text = statusText,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (isExpired) Color(0xFFFFB4AB) else Color(0xFF81C784)
+                    color = when (statusText) {
+                        "ACTIVE" -> Color(0xFF81C784)
+                        "EXPIRED" -> Color(0xFFFFB4AB)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
 
@@ -128,14 +140,14 @@ fun LicenseClockCard(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     ),
-                    color = if (isExpired) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.onSurface
+                    color = if (isExpired) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "Hours  :  Minutes  :  Seconds",
+                text = if (isExpired) "No active plan found. Please activate a license." else "Hours  :  Minutes  :  Seconds",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
