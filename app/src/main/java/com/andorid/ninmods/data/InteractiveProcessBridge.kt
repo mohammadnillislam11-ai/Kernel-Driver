@@ -72,7 +72,6 @@ class InteractiveProcessBridge(
                 activeProcess = proc
                 val out = DataOutputStream(proc.outputStream)
                 outputStream = out
-                _isRunning.value = true
 
                 // Grant execution rights and setup shared environment
                 out.writeBytes("chmod 755 '${executableFile.absolutePath}'\n")
@@ -88,12 +87,11 @@ class InteractiveProcessBridge(
                 }
                 out.writeBytes("export NIN_SERVER_URL='${com.andorid.ninmods.config.AppConfig.BASE_URL.trimEnd('/')}'\n")
 
-                // Robust execution: Try native binary execve first (supports direct ELF or #!/bin/sh shebang),
-                // then fallback to explicit shell execution if needed.
+                // Launch using exec so the su process is directly replaced by the mod binary
                 if (executableFile.name.endsWith(".sh")) {
-                    out.writeBytes("'${executableFile.absolutePath}' || sh '${executableFile.absolutePath}'\n")
+                    out.writeBytes("exec sh '${executableFile.absolutePath}'\n")
                 } else {
-                    out.writeBytes("'${executableFile.absolutePath}'\n")
+                    out.writeBytes("exec '${executableFile.absolutePath}'\n")
                 }
                 out.flush()
 
@@ -126,11 +124,14 @@ class InteractiveProcessBridge(
                                 }
                             }
 
-                            // Detect license success
+                            // Detect license success and overlay startup
                             if (window.contains("validated successfully", ignoreCase = true) ||
                                 window.contains("Core engine authorized", ignoreCase = true) ||
+                                window.contains("ninmods starting", ignoreCase = true) ||
+                                window.contains("daemon active", ignoreCase = true) ||
                                 (window.contains("Active", ignoreCase = true) && window.contains("Runtime", ignoreCase = true))
                             ) {
+                                _isRunning.value = true
                                 _executionStatus.value = "Active & Running in RAM"
                             }
                         }

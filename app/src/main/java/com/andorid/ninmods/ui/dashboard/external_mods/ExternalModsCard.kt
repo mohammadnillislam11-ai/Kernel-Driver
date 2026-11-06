@@ -90,7 +90,7 @@ fun ExternalModsCard(
     var downloadingMod by remember { mutableStateOf<ExternalModItem?>(null) }
     var downloadProgress by remember { mutableIntStateOf(0) }
 
-    var warningMod by remember { mutableStateOf<ExternalModItem?>(null) }
+    var stopConfirmMod by remember { mutableStateOf<ExternalModItem?>(null) }
 
     var showLicenseDialog by remember { mutableStateOf(false) }
     var isSubmittingLicense by remember { mutableStateOf(false) }
@@ -192,26 +192,19 @@ fun ExternalModsCard(
         )
     }
 
-    // ─── 2. APATCH START CONFIRMATION DIALOG (Cancel & Start buttons) ───
-    warningMod?.let { mod ->
+    // ─── 2. APATCH STOP CONFIRMATION DIALOG (Cancel & Stop buttons) ───
+    stopConfirmMod?.let { mod ->
         ApatchWarningDialog(
             modName = mod.name,
-            onDismiss = { warningMod = null },
+            title = "Stop Mod",
+            message = "Do you want to stop \"${mod.name}\" and unload it from memory?",
+            confirmButtonText = "Stop",
+            onDismiss = { stopConfirmMod = null },
             onConfirmLaunch = {
-                warningMod = null
-                activeModId = mod.id
-                licenseErrorMessage = null
-                Toast.makeText(context, "Starting ${mod.name} in memory...", Toast.LENGTH_SHORT).show()
-                val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
-                val activeKey = sessionManager?.activeLicenseKey ?: ""
-                processBridge.start(
-                    executableFile = mod.file,
-                    deviceHwid = deviceHwid,
-                    licenseKey = activeKey,
-                    onLicensePrompt = {
-                        showLicenseDialog = true
-                    }
-                )
+                stopConfirmMod = null
+                processBridge.stop()
+                activeModId = null
+                Toast.makeText(context, "${mod.name} stopped.", Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -227,6 +220,8 @@ fun ExternalModsCard(
                 showLicenseDialog = false
                 isSubmittingLicense = false
                 licenseErrorMessage = null
+                processBridge.stop()
+                activeModId = null
             },
             onSubmitKey = { submittedKey ->
                 isSubmittingLicense = true
@@ -244,17 +239,20 @@ fun ExternalModsCard(
                             sm.activeLicenseKey = submittedKey
                             sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
                         }
-                    }
 
-                    // Feed submitted license into running process stdin
-                    val sent = processBridge.sendInput(submittedKey)
-                    isSubmittingLicense = false
-                    if (sent) {
-                        showLicenseDialog = false
-                        Toast.makeText(context, "License key verified & dispatched to engine.", Toast.LENGTH_SHORT).show()
+                        // Feed submitted license into running process stdin
+                        val sent = processBridge.sendInput(submittedKey)
+                        isSubmittingLicense = false
+                        if (sent) {
+                            showLicenseDialog = false
+                            Toast.makeText(context, "License verified! Loading floating engine...", Toast.LENGTH_SHORT).show()
+                        } else {
+                            licenseErrorMessage = "Failed to communicate with running background process."
+                        }
                     } else {
+                        isSubmittingLicense = false
                         licenseErrorMessage = activationResult.exceptionOrNull()?.message 
-                            ?: "Failed to communicate with running background process."
+                            ?: "License verification failed on server."
                     }
                 }
             }
@@ -341,9 +339,23 @@ fun ExternalModsCard(
                                     if (!mod.isDownloaded) {
                                         // 1. Not downloaded -> Show download confirmation dialog
                                         confirmDownloadMod = mod
+                                    } else if (isRunning) {
+                                        // 2. Already active -> Ask to stop
+                                        stopConfirmMod = mod
                                     } else {
-                                        // 2. Already downloaded -> Show start confirmation dialog
-                                        warningMod = mod
+                                        // 3. Downloaded -> Launch directly in background; binary stdin prompt triggers ApatchLicenseKeyDialog
+                                        activeModId = mod.id
+                                        licenseErrorMessage = null
+                                        Toast.makeText(context, "Initializing ${mod.name}...", Toast.LENGTH_SHORT).show()
+                                        val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                                        processBridge.start(
+                                            executableFile = mod.file,
+                                            deviceHwid = deviceHwid,
+                                            licenseKey = "", // Force prompt detection so terminal opens ApatchLicenseKeyDialog
+                                            onLicensePrompt = {
+                                                showLicenseDialog = true
+                                            }
+                                        )
                                     }
                                 },
                             shape = RoundedCornerShape(16.dp),

@@ -253,13 +253,16 @@ fun ApatchDownloadDialog(
 }
 
 /**
- * APatch Official Start Confirmation Dialog.
- * Displayed when user taps a downloaded mod to confirm memory execution.
+ * APatch Official Action / Stop Confirmation Dialog.
+ * Displayed when user taps an active mod to confirm stopping execution.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApatchWarningDialog(
     modName: String,
+    title: String = "Stop Mod",
+    message: String = "Do you want to stop \"$modName\" and unload it from memory?",
+    confirmButtonText: String = "Stop",
     onDismiss: () -> Unit,
     onConfirmLaunch: () -> Unit
 ) {
@@ -297,7 +300,7 @@ fun ApatchWarningDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Start Mod",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -306,7 +309,7 @@ fun ApatchWarningDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Do you want to start \"$modName\" in memory?",
+                    text = message,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -339,7 +342,7 @@ fun ApatchWarningDialog(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text(text = "Start", fontWeight = FontWeight.Bold)
+                        Text(text = confirmButtonText, fontWeight = FontWeight.Bold)
                     }
                 }
             }
