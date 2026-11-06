@@ -234,7 +234,7 @@ fun ExternalModsCard(
             processBridge.start(
                 executableFile = mod.file,
                 deviceHwid = deviceHwid,
-                licenseKey = "", // Run interactively so user submits through the APatch UI
+                licenseKey = initialKey,
                 onLicensePrompt = {
                     val current = unifiedDialogState
                     if (current !is UnifiedModDialogState.LicenseAuth) {
@@ -311,38 +311,67 @@ fun ExternalModsCard(
                     unifiedDialogState = state.copy(
                         isSubmitting = true,
                         errorMessage = null,
-                        terminalLogs = (state.terminalLogs + listOf("[*] Passing key to background process...", "[*] Verifying license with server...")).takeLast(40)
+                        terminalLogs = (state.terminalLogs + listOf(
+                            "[*] Verifying license key with authorization server...",
+                            "[*] Synchronizing secure handshake..."
+                        )).takeLast(40)
                     )
                     scope.launch {
                         val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
-                        // 1. Pass key directly to the running background shell stdin
-                        val sent = processBridge.sendInput(submittedKey)
-                        if (!sent) {
-                            val current = unifiedDialogState
-                            if (current is UnifiedModDialogState.LicenseAuth) {
-                                unifiedDialogState = current.copy(
-                                    isSubmitting = false,
-                                    errorMessage = "Failed to communicate with running background process.",
-                                    terminalLogs = (current.terminalLogs + listOf("[-] Stdin pipe disconnected")).takeLast(40)
-                                )
-                            }
-                        }
 
-                        // 2. Concurrently synchronize activation with server API
+                        // 1. Concurrently synchronize activation with server API
                         val activationResult = com.andorid.ninmods.network.AuthApiClient.activateLicense(
                             licenseKey = submittedKey,
                             hwid = deviceHwid
                         )
+
                         if (activationResult.isSuccess) {
                             val licInfo = activationResult.getOrNull()
                             sessionManager?.let { sm ->
                                 sm.activeLicenseKey = submittedKey
                                 sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
                             }
+
+                            // 2. Feed to stdin pipe if alive, or cleanly restart process with pre-authenticated key
+                            val sent = processBridge.sendInput(submittedKey)
+                            if (!sent || !processBridge.isRunning.value) {
+                                selectedModForAction?.let { mod ->
+                                    processBridge.stop()
+                                    processBridge.start(
+                                        executableFile = mod.file,
+                                        deviceHwid = deviceHwid,
+                                        licenseKey = submittedKey,
+                                        onLicensePrompt = {},
+                                        onError = { errMsg ->
+                                            val current = unifiedDialogState
+                                            if (current is UnifiedModDialogState.LicenseAuth) {
+                                                unifiedDialogState = current.copy(
+                                                    isSubmitting = false,
+                                                    errorMessage = errMsg,
+                                                    terminalLogs = (current.terminalLogs + listOf("[-] $errMsg")).takeLast(40)
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+
+                            val current = unifiedDialogState
+                            if (current is UnifiedModDialogState.LicenseAuth) {
+                                unifiedDialogState = current.copy(
+                                    isSubmitting = false,
+                                    isVerified = true,
+                                    terminalLogs = (current.terminalLogs + listOf(
+                                        "[+] Cloud License Authorized!",
+                                        "[+] Remaining: ${licInfo?.remainingSeconds?.let { it / 3600 } ?: 24} hours",
+                                        "[+] Ready to load into memory."
+                                    )).takeLast(40)
+                                )
+                            }
                         } else {
                             val serverErr = activationResult.exceptionOrNull()?.message ?: "Server verification rejected license key."
                             val current = unifiedDialogState
-                            if (current is UnifiedModDialogState.LicenseAuth && !current.isVerified) {
+                            if (current is UnifiedModDialogState.LicenseAuth) {
                                 unifiedDialogState = current.copy(
                                     isSubmitting = false,
                                     errorMessage = serverErr,
