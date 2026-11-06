@@ -95,4 +95,30 @@ object ShellExecutor {
             false
         }
     }
+
+    /**
+     * Checks if genuine Superuser (Root) access is granted and available.
+     */
+    fun isRootAvailable(): Boolean {
+        val knownSuPaths = listOf(
+            "/system/bin/su",
+            "/system/xbin/su",
+            "/sbin/su",
+            "/data/adb/ap/bin/su",
+            "/data/adb/magisk/su",
+            "/data/adb/ksu/bin/su"
+        )
+        val hasBinary = knownSuPaths.any { java.io.File(it).exists() }
+
+        return try {
+            val suBin = knownSuPaths.firstOrNull { java.io.File(it).exists() } ?: "su"
+            val proc = ProcessBuilder(suBin, "-c", "id").start()
+            val reader = BufferedReader(InputStreamReader(proc.inputStream))
+            val line = reader.readLine()
+            val exitCode = proc.waitFor()
+            exitCode == 0 && (line?.contains("uid=0") == true || hasBinary)
+        } catch (_: Exception) {
+            false
+        }
+    }
 }

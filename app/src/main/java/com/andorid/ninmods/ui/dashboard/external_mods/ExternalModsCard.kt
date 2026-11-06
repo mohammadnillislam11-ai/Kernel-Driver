@@ -52,9 +52,11 @@ import com.andorid.ninmods.R
 import com.andorid.ninmods.data.InteractiveProcessBridge
 import com.andorid.ninmods.data.ModDownloader
 import com.andorid.ninmods.data.SessionManager
+import com.andorid.ninmods.data.ShellExecutor
 import com.andorid.ninmods.ui.dialogs.ApatchConfirmDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchLicenseKeyDialog
+import com.andorid.ninmods.ui.dialogs.ApatchRootRequiredDialog
 import com.andorid.ninmods.ui.dialogs.ApatchWarningDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -96,6 +98,9 @@ fun ExternalModsCard(
     var showLicenseDialog by remember { mutableStateOf(false) }
     var isSubmittingLicense by remember { mutableStateOf(false) }
     var licenseErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    var showRootRequiredDialog by remember { mutableStateOf(false) }
+    var rootErrorMessage by remember { mutableStateOf<String?>(null) }
 
     // Automatically trigger license pop-up dialog when stdin prompt is detected in running binary
     LaunchedEffect(isLicensePromptTriggered) {
@@ -292,6 +297,18 @@ fun ExternalModsCard(
         )
     }
 
+    // ─── 4. APATCH ROOT PRIVILEGE REQUIRED POP-UP DIALOG ───
+    if (showRootRequiredDialog) {
+        ApatchRootRequiredDialog(
+            modName = "External Engine",
+            errorMessage = rootErrorMessage,
+            onDismiss = {
+                showRootRequiredDialog = false
+                rootErrorMessage = null
+            }
+        )
+    }
+
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -376,19 +393,35 @@ fun ExternalModsCard(
                                         // 2. Already active -> Ask to stop
                                         stopConfirmMod = mod
                                     } else {
-                                        // 3. Downloaded -> Launch directly in background; binary stdin prompt triggers ApatchLicenseKeyDialog
-                                        activeModId = mod.id
-                                        licenseErrorMessage = null
-                                        Toast.makeText(context, "Initializing ${mod.name}...", Toast.LENGTH_SHORT).show()
-                                        val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
-                                        processBridge.start(
-                                            executableFile = mod.file,
-                                            deviceHwid = deviceHwid,
-                                            licenseKey = "", // Force prompt detection so terminal opens ApatchLicenseKeyDialog
-                                            onLicensePrompt = {
-                                                showLicenseDialog = true
+                                        // 3. Downloaded -> Verify Root privilege before execution
+                                        scope.launch {
+                                            val isRooted = withContext(Dispatchers.IO) {
+                                                ShellExecutor.isRootAvailable()
                                             }
-                                        )
+                                            if (!isRooted) {
+                                                rootErrorMessage = "Binary failed to load: This device is not rooted or Superuser (Root) access was denied. Superuser permissions (APatch, KernelSU, or Magisk) are mandatory to allocate RAM memory buffers and render the overlay."
+                                                showRootRequiredDialog = true
+                                                return@launch
+                                            }
+
+                                            activeModId = mod.id
+                                            licenseErrorMessage = null
+                                            Toast.makeText(context, "Initializing ${mod.name}...", Toast.LENGTH_SHORT).show()
+                                            val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                                            processBridge.start(
+                                                executableFile = mod.file,
+                                                deviceHwid = deviceHwid,
+                                                licenseKey = "", // Force prompt detection so terminal opens ApatchLicenseKeyDialog
+                                                onLicensePrompt = {
+                                                    showLicenseDialog = true
+                                                },
+                                                onError = { errMsg ->
+                                                    rootErrorMessage = "Binary failed to load: $errMsg\n\nPlease ensure Superuser permission is granted to NINMODS in your root manager (APatch/KernelSU/Magisk)."
+                                                    showRootRequiredDialog = true
+                                                    activeModId = null
+                                                }
+                                            )
+                                        }
                                     }
                                 },
                             shape = RoundedCornerShape(16.dp),

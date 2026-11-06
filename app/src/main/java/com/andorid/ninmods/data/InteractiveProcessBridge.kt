@@ -51,7 +51,8 @@ class InteractiveProcessBridge(
         workingDir: File = executableFile.parentFile ?: executableFile,
         deviceHwid: String = "",
         licenseKey: String = "",
-        onLicensePrompt: () -> Unit = {}
+        onLicensePrompt: () -> Unit = {},
+        onError: (String) -> Unit = {}
     ) {
         if (_isRunning.value) return
 
@@ -151,14 +152,26 @@ class InteractiveProcessBridge(
                 }
 
                 val exitCode = proc.waitFor()
+                val wasRunning = _isRunning.value
+                val wasReady = _isReadyToStart.value
                 _isRunning.value = false
                 _licensePromptTriggered.value = false
                 _isReadyToStart.value = false
                 _executionStatus.value = if (exitCode == 0) "Completed" else "Exited (Code $exitCode)"
 
+                if (exitCode != 0 && !wasRunning && !wasReady) {
+                    launch(Dispatchers.Main) {
+                        onError("Root binary terminated before initialization (Exit code: $exitCode). Ensure Superuser access is granted.")
+                    }
+                }
+
             } catch (e: Exception) {
                 _isRunning.value = false
-                _executionStatus.value = "Execution failed: ${e.message}"
+                val err = e.message ?: "Failed to spawn root process"
+                _executionStatus.value = "Execution failed: $err"
+                launch(Dispatchers.Main) {
+                    onError(err)
+                }
             } finally {
                 cleanup()
             }
