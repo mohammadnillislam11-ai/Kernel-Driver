@@ -81,6 +81,7 @@ fun ExternalModsCard(
     val processBridge = remember { InteractiveProcessBridge(scope) }
     val isProcessRunning by processBridge.isRunning.collectAsState()
     val isLicensePromptTriggered by processBridge.licensePromptTriggered.collectAsState()
+    val isReadyToStart by processBridge.isReadyToStart.collectAsState()
 
     var mods by remember { mutableStateOf<List<ExternalModItem>>(emptyList()) }
     var activeModId by remember { mutableStateOf<String?>(null) }
@@ -100,6 +101,12 @@ fun ExternalModsCard(
     LaunchedEffect(isLicensePromptTriggered) {
         if (isLicensePromptTriggered) {
             showLicenseDialog = true
+        }
+    }
+
+    LaunchedEffect(isReadyToStart) {
+        if (isReadyToStart) {
+            isSubmittingLicense = false
         }
     }
 
@@ -209,13 +216,14 @@ fun ExternalModsCard(
         )
     }
 
-    // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG (Verify button) ───
+    // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG (Verify -> Start buttons) ───
     if (showLicenseDialog) {
         val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
         ApatchLicenseKeyDialog(
             initialKey = initialKey,
             isSubmitting = isSubmittingLicense,
             errorMessage = licenseErrorMessage,
+            isVerified = isReadyToStart,
             onDismiss = {
                 showLicenseDialog = false
                 isSubmittingLicense = false
@@ -242,18 +250,23 @@ fun ExternalModsCard(
 
                         // Feed submitted license into running process stdin
                         val sent = processBridge.sendInput(submittedKey)
-                        isSubmittingLicense = false
-                        if (sent) {
-                            showLicenseDialog = false
-                            Toast.makeText(context, "License verified! Loading floating engine...", Toast.LENGTH_SHORT).show()
-                        } else {
+                        if (!sent) {
+                            isSubmittingLicense = false
                             licenseErrorMessage = "Failed to communicate with running background process."
                         }
+                        // Binary will verify and print readiness, setting isReadyToStart = true
                     } else {
                         isSubmittingLicense = false
                         licenseErrorMessage = activationResult.exceptionOrNull()?.message 
                             ?: "License verification failed on server."
                     }
+                }
+            },
+            onStartMod = {
+                scope.launch {
+                    processBridge.sendInput("START")
+                    showLicenseDialog = false
+                    Toast.makeText(context, "Loading floating engine into RAM...", Toast.LENGTH_SHORT).show()
                 }
             }
         )

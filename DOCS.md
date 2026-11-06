@@ -55,7 +55,7 @@ This document defines the architecture, workflow, and operational contracts of t
    ```
 4. `InteractiveProcessBridge` detects this stdout sequence and triggers `onLicensePrompt()`.
 
-### Step 3: License Key Pop-up Dialog & Floating Logo Activation
+### Step 3: Two-Stage Verification & RAM Loading Gate (Verify -> Start)
 1. The app automatically surfaces the **Material 3 License Key Pop-up Dialog** (`ApatchLicenseKeyDialog`) — the single interactive dialog:
    - Input field: Pre-filled with `sessionManager.activeLicenseKey` or account credential.
    - Action buttons: **"Cancel"** and **"Verify"**.
@@ -63,11 +63,20 @@ This document defines the architecture, workflow, and operational contracts of t
 3. When user taps **"Verify"**:
    - The button shows an in-button spinner (`CircularProgressIndicator`) and label `"Verifying..."`.
    - The app verifies with backend (`/api/v2/app/activate`) and pipes the key to the running process stdin (`processBridge.sendInput(key)`).
-   - The native binary receives the key, verifies online, and logs:
-     `[+] API Key validated successfully. Core engine authorized.`
+   - The native binary receives the key, verifies online via official embedded `libcurl` + OpenSSL, and signals:
+     ```
+     [+] API Key validated successfully. Core engine authorized.
+     [?] Ready to load into memory. Awaiting START signal...
+     ```
+   - `InteractiveProcessBridge` catches the readiness signal and marks `isReadyToStart = true`.
+   - In the dialog, a green verification indicator appears: `"License verified! Ready to load into RAM."`.
+   - The button dynamically transforms from "Verify" into **"Start"** (featuring `Icons.Filled.PlayArrow` and green container).
+4. When user taps **"Start"**:
+   - The app signals the binary stdin with `"START\n"` (`processBridge.sendInput("START")`).
+   - The native binary allocates resources, unblocks, and loads the overlay engine into RAM.
    - The native surface engine (`ANativeWindowCreator` & ImGui) initializes and displays the **Official Floating Logo** directly over the screen!
    - The License Dialog dismisses automatically and the card status updates to `ACTIVE`.
-4. If user taps the card while `ACTIVE`, an official confirmation dialog offers to **"Stop Mod"** and unload from memory.
+5. If user taps the card while `ACTIVE`, an official confirmation dialog offers to **"Stop Mod"** and unload from memory.
 
 ---
 

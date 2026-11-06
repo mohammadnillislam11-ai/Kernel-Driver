@@ -34,6 +34,9 @@ class InteractiveProcessBridge(
     private val _licensePromptTriggered = MutableStateFlow(false)
     val licensePromptTriggered: StateFlow<Boolean> = _licensePromptTriggered.asStateFlow()
 
+    private val _isReadyToStart = MutableStateFlow(false)
+    val isReadyToStart: StateFlow<Boolean> = _isReadyToStart.asStateFlow()
+
     private val _outputLines = MutableSharedFlow<String>(extraBufferCapacity = 64)
     val outputLines: SharedFlow<String> = _outputLines.asSharedFlow()
 
@@ -125,9 +128,16 @@ class InteractiveProcessBridge(
                                 }
                             }
 
-                            // Detect license success and overlay startup
-                            if (window.contains("validated successfully", ignoreCase = true) ||
-                                window.contains("Core engine authorized", ignoreCase = true) ||
+                            // Detect license success and ready to start signal from binary
+                            if (window.contains("Awaiting START signal", ignoreCase = true) ||
+                                window.contains("Ready to load into memory", ignoreCase = true) ||
+                                (window.contains("validated successfully", ignoreCase = true) && window.contains("authorized", ignoreCase = true))
+                            ) {
+                                _isReadyToStart.value = true
+                            }
+
+                            // Detect overlay execution and memory engine active
+                            if (window.contains("Loading overlay engine into RAM", ignoreCase = true) ||
                                 window.contains("ninmods starting", ignoreCase = true) ||
                                 window.contains("daemon active", ignoreCase = true) ||
                                 (window.contains("Active", ignoreCase = true) && window.contains("Runtime", ignoreCase = true))
@@ -142,6 +152,7 @@ class InteractiveProcessBridge(
                 val exitCode = proc.waitFor()
                 _isRunning.value = false
                 _licensePromptTriggered.value = false
+                _isReadyToStart.value = false
                 _executionStatus.value = if (exitCode == 0) "Completed" else "Exited (Code $exitCode)"
 
             } catch (e: Exception) {
@@ -188,5 +199,6 @@ class InteractiveProcessBridge(
         outputStream = null
         _isRunning.value = false
         _licensePromptTriggered.value = false
+        _isReadyToStart.value = false
     }
 }
