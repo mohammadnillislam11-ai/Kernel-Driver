@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.data.InteractiveProcessBridge
 import com.andorid.ninmods.data.ModDownloader
 import com.andorid.ninmods.data.SessionManager
+import com.andorid.ninmods.ui.dialogs.ApatchConfirmDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchLicenseKeyDialog
 import com.andorid.ninmods.ui.dialogs.ApatchWarningDialog
@@ -85,6 +86,7 @@ fun ExternalModsCard(
     var activeModId by remember { mutableStateOf<String?>(null) }
 
     // Dialog state holders
+    var confirmDownloadMod by remember { mutableStateOf<ExternalModItem?>(null) }
     var downloadingMod by remember { mutableStateOf<ExternalModItem?>(null) }
     var downloadProgress by remember { mutableIntStateOf(0) }
 
@@ -106,16 +108,16 @@ fun ExternalModsCard(
             mods = withContext(Dispatchers.IO) {
                 val internalDir = File(context.filesDir, "external_mods").also { if (!it.exists()) it.mkdirs() }
 
-                // 1. Core Built-In Official External Mods (downloaded directly from backend server)
+                // 1. Core Built-In Official External Mods (downloaded directly from backend server /downloads/external/)
                 val defaultSpecs = listOf(
-                    Triple("External Overlay ESP", "external_overlay.sh", "Kernel_Drivers.zip"),
-                    Triple("Dynamic Offset Hook", "offset_hook.sh", "Kernel_Drivers.zip")
+                    Triple("External Overlay ESP", "external_overlay.sh", "external/external_overlay.sh"),
+                    Triple("Dynamic Offset Hook", "offset_hook.sh", "external/offset_hook.sh")
                 )
 
                 val defaultItems = defaultSpecs.map { (name, fileName, downloadPkg) ->
                     val file = File(internalDir, fileName)
                     ExternalModItem(
-                        id = "ext_${fileName}",
+                        id = fileName,
                         name = name,
                         fileName = fileName,
                         downloadPackage = downloadPkg,
@@ -158,6 +160,35 @@ fun ExternalModsCard(
 
     LaunchedEffect(Unit) {
         refreshMods()
+    }
+
+    // ─── 0. APATCH CONFIRM DOWNLOAD POP-UP DIALOG ───
+    confirmDownloadMod?.let { mod ->
+        ApatchConfirmDownloadDialog(
+            modName = mod.name,
+            onDismiss = { confirmDownloadMod = null },
+            onConfirmDownload = {
+                confirmDownloadMod = null
+                downloadingMod = mod
+                downloadProgress = 0
+                scope.launch {
+                    val result = ModDownloader.downloadMod(
+                        context = context,
+                        downloadUrl = mod.downloadPackage,
+                        targetDir = mod.file.parentFile ?: File(context.filesDir, "external_mods"),
+                        fileName = mod.fileName,
+                        onProgress = { p -> downloadProgress = p }
+                    )
+                    downloadingMod = null
+                    if (result.isSuccess) {
+                        Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
+                        refreshMods()
+                    } else {
+                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        )
     }
 
     // ─── 1. APATCH ANIMATED DOWNLOAD DIALOG ───
@@ -305,25 +336,8 @@ fun ExternalModsCard(
                                         .weight(1f)
                                         .clickable {
                                             if (!mod.isDownloaded) {
-                                                // Trigger APatch Animated Download Dialog
-                                                downloadingMod = mod
-                                                downloadProgress = 0
-                                                scope.launch {
-                                                    val result = ModDownloader.downloadMod(
-                                                        context = context,
-                                                        downloadUrl = mod.downloadPackage,
-                                                        targetDir = mod.file.parentFile ?: File(context.filesDir, "external_mods"),
-                                                        fileName = mod.fileName,
-                                                        onProgress = { p -> downloadProgress = p }
-                                                    )
-                                                    downloadingMod = null
-                                                    if (result.isSuccess) {
-                                                        Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
-                                                        refreshMods()
-                                                    } else {
-                                                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
-                                                    }
-                                                }
+                                                // Trigger APatch Official Download Confirmation Dialog
+                                                confirmDownloadMod = mod
                                             } else {
                                                 // Trigger APatch Official Warning Dialog
                                                 warningMod = mod
@@ -355,18 +369,11 @@ fun ExternalModsCard(
                                                 modifier = Modifier.fillMaxSize(),
                                                 contentAlignment = Alignment.Center
                                             ) {
+                                                // Always render official mod icon (PlayArrow if active)
                                                 Icon(
-                                                    imageVector = when {
-                                                        isRunning -> Icons.Filled.PlayArrow
-                                                        !mod.isDownloaded -> Icons.Filled.CloudDownload
-                                                        else -> mod.icon
-                                                    },
+                                                    imageVector = if (isRunning) Icons.Filled.PlayArrow else mod.icon,
                                                     contentDescription = mod.name,
-                                                    tint = when {
-                                                        isRunning -> MaterialTheme.colorScheme.primary
-                                                        !mod.isDownloaded -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                        else -> MaterialTheme.colorScheme.primary
-                                                    },
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(22.dp)
                                                 )
                                             }
@@ -397,7 +404,7 @@ fun ExternalModsCard(
                                             Text(
                                                 text = when {
                                                     isRunning -> "ACTIVE"
-                                                    !mod.isDownloaded -> "DOWNLOAD"
+                                                    !mod.isDownloaded -> "AVAILABLE"
                                                     else -> "READY"
                                                 },
                                                 fontSize = 9.sp,

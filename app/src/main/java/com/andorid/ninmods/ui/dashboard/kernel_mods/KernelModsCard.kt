@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.andorid.ninmods.data.InteractiveProcessBridge
 import com.andorid.ninmods.data.ModDownloader
 import com.andorid.ninmods.data.SessionManager
+import com.andorid.ninmods.ui.dialogs.ApatchConfirmDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchLicenseKeyDialog
 import com.andorid.ninmods.ui.dialogs.ApatchWarningDialog
@@ -86,6 +87,7 @@ fun KernelModsCard(
     var activeModId by remember { mutableStateOf<String?>(null) }
 
     // Dialog state holders
+    var confirmDownloadMod by remember { mutableStateOf<KernelModItem?>(null) }
     var downloadingMod by remember { mutableStateOf<KernelModItem?>(null) }
     var downloadProgress by remember { mutableIntStateOf(0) }
 
@@ -107,17 +109,17 @@ fun KernelModsCard(
             mods = withContext(Dispatchers.IO) {
                 val internalDir = File(context.filesDir, "kernel_mods").also { if (!it.exists()) it.mkdirs() }
 
-                // 1. Core Built-In Official Kernel Mods (downloaded directly from backend server)
+                // 1. Core Built-In Official Kernel Mods (downloaded directly from backend server /downloads/kernel/)
                 val defaultSpecs = listOf(
-                    Triple("Kernel Core Engine", "run_ram.sh", "Kernel_Drivers.zip"),
-                    Triple("Driver Node Loader", "driver_loader.sh", "Kernel_Drivers.zip"),
-                    Triple("Kernel Security Bypass", "sec_bypass.sh", "Kernel_Drivers.zip")
+                    Triple("Kernel Core Engine", "run_ram.sh", "kernel/run_ram.sh"),
+                    Triple("Driver Node Loader", "driver_loader.sh", "kernel/driver_loader.sh"),
+                    Triple("Kernel Security Bypass", "sec_bypass.sh", "kernel/sec_bypass.sh")
                 )
 
                 val defaultItems = defaultSpecs.map { (name, fileName, downloadPkg) ->
                     val file = File(internalDir, fileName)
                     KernelModItem(
-                        id = "kernel_${fileName}",
+                        id = fileName,
                         name = name,
                         fileName = fileName,
                         downloadPackage = downloadPkg,
@@ -160,6 +162,35 @@ fun KernelModsCard(
 
     LaunchedEffect(Unit) {
         refreshMods()
+    }
+
+    // ─── 0. APATCH CONFIRM DOWNLOAD POP-UP DIALOG ───
+    confirmDownloadMod?.let { mod ->
+        ApatchConfirmDownloadDialog(
+            modName = mod.name,
+            onDismiss = { confirmDownloadMod = null },
+            onConfirmDownload = {
+                confirmDownloadMod = null
+                downloadingMod = mod
+                downloadProgress = 0
+                scope.launch {
+                    val result = ModDownloader.downloadMod(
+                        context = context,
+                        downloadUrl = mod.downloadPackage,
+                        targetDir = mod.file.parentFile ?: File(context.filesDir, "kernel_mods"),
+                        fileName = mod.fileName,
+                        onProgress = { p -> downloadProgress = p }
+                    )
+                    downloadingMod = null
+                    if (result.isSuccess) {
+                        Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
+                        refreshMods()
+                    } else {
+                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        )
     }
 
     // ─── 1. APATCH ANIMATED DOWNLOAD DIALOG ───
@@ -307,25 +338,8 @@ fun KernelModsCard(
                                         .weight(1f)
                                         .clickable {
                                             if (!mod.isDownloaded) {
-                                                // Trigger APatch Animated Download Dialog
-                                                downloadingMod = mod
-                                                downloadProgress = 0
-                                                scope.launch {
-                                                    val result = ModDownloader.downloadMod(
-                                                        context = context,
-                                                        downloadUrl = mod.downloadPackage,
-                                                        targetDir = mod.file.parentFile ?: File(context.filesDir, "kernel_mods"),
-                                                        fileName = mod.fileName,
-                                                        onProgress = { p -> downloadProgress = p }
-                                                    )
-                                                    downloadingMod = null
-                                                    if (result.isSuccess) {
-                                                        Toast.makeText(context, "${mod.name} downloaded successfully!", Toast.LENGTH_SHORT).show()
-                                                        refreshMods()
-                                                    } else {
-                                                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Download failed", Toast.LENGTH_LONG).show()
-                                                    }
-                                                }
+                                                // Trigger APatch Official Download Confirmation Dialog
+                                                confirmDownloadMod = mod
                                             } else {
                                                 // Trigger APatch Official Warning Dialog
                                                 warningMod = mod
@@ -357,18 +371,11 @@ fun KernelModsCard(
                                                 modifier = Modifier.fillMaxSize(),
                                                 contentAlignment = Alignment.Center
                                             ) {
+                                                // Always render official mod icon (PlayArrow if active)
                                                 Icon(
-                                                    imageVector = when {
-                                                        isRunning -> Icons.Filled.PlayArrow
-                                                        !mod.isDownloaded -> Icons.Filled.CloudDownload
-                                                        else -> mod.icon
-                                                    },
+                                                    imageVector = if (isRunning) Icons.Filled.PlayArrow else mod.icon,
                                                     contentDescription = mod.name,
-                                                    tint = when {
-                                                        isRunning -> MaterialTheme.colorScheme.primary
-                                                        !mod.isDownloaded -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                        else -> MaterialTheme.colorScheme.primary
-                                                    },
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                     modifier = Modifier.size(22.dp)
                                                 )
                                             }
@@ -399,7 +406,7 @@ fun KernelModsCard(
                                             Text(
                                                 text = when {
                                                     isRunning -> "ACTIVE"
-                                                    !mod.isDownloaded -> "DOWNLOAD"
+                                                    !mod.isDownloaded -> "AVAILABLE"
                                                     else -> "READY"
                                                 },
                                                 fontSize = 9.sp,
