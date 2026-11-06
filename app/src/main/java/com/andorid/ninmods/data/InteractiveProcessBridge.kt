@@ -88,8 +88,10 @@ class InteractiveProcessBridge(
                 }
                 out.writeBytes("export NIN_SERVER_URL='${com.andorid.ninmods.config.AppConfig.BASE_URL.trimEnd('/')}'\n")
 
+                // Robust execution: Try native binary execve first (supports direct ELF or #!/bin/sh shebang),
+                // then fallback to explicit shell execution if needed.
                 if (executableFile.name.endsWith(".sh")) {
-                    out.writeBytes("sh '${executableFile.absolutePath}'\n")
+                    out.writeBytes("'${executableFile.absolutePath}' || sh '${executableFile.absolutePath}'\n")
                 } else {
                     out.writeBytes("'${executableFile.absolutePath}'\n")
                 }

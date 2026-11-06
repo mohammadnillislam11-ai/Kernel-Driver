@@ -484,6 +484,14 @@ object AuthApiClient {
     }
 
     /**
+     * Alias for activateLicense
+     */
+    suspend fun activateLicense(
+        licenseKey: String,
+        hwid: String
+    ): Result<ActiveLicenseInfo> = verifyLicense(licenseKey, hwid)
+
+    /**
      * Parse server response body into JSON, stripping any Cloudflare / Nginx / Apache HTML error pages.
      * Prevents raw HTML tags from ever leaking onto the UI.
      */
