@@ -117,13 +117,14 @@ fun ExternalModsCard(
 
                 // The single official external mod built from refer/nin
                 val officialFileName = "gemini-cli.sh"
+                val officialZipName = "gemini-cli.zip"
                 val officialFile = File(internalDir, officialFileName)
 
                 val officialMod = ExternalModItem(
                     id = officialFileName,
                     name = "NINMODS External",
-                    fileName = officialFileName,
-                    downloadPackage = "external/$officialFileName",
+                    fileName = officialZipName,
+                    downloadPackage = "external/$officialZipName",
                     file = officialFile,
                     isDownloaded = officialFile.exists()
                 )

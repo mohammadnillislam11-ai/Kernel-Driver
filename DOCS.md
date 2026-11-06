@@ -42,7 +42,8 @@ This document defines the architecture, workflow, and operational contracts of t
 4. If user taps **"Cancel"**, the dialog dismisses and no network activity occurs.
 5. If user taps **"Download"**:
    - The animated download dialog (`ApatchDownloadDialog`) appears with a real-time progress bar.
-   - The app streams `downloads/external/gemini-cli.sh` from the backend server to local storage.
+   - The app streams `downloads/external/gemini-cli.zip` (~1.7 MB compressed package) from the backend server to local storage.
+   - Automatically unzips and extracts `gemini-cli.sh`, cleanly purging the temporary `.zip` archive.
    - Grants executable permissions: `chmod 755 gemini-cli.sh`.
    - Card status changes to `READY`.
 
