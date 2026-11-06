@@ -2,6 +2,7 @@ package com.andorid.ninmods.ui.dashboard.external_mods
 
 import android.os.Environment
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,12 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -41,13 +39,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.andorid.ninmods.R
 import com.andorid.ninmods.data.InteractiveProcessBridge
 import com.andorid.ninmods.data.ModDownloader
 import com.andorid.ninmods.data.SessionManager
@@ -66,8 +67,7 @@ data class ExternalModItem(
     val fileName: String,
     val downloadPackage: String,
     val file: File,
-    val isDownloaded: Boolean,
-    val icon: ImageVector
+    val isDownloaded: Boolean
 )
 
 @Composable
@@ -96,7 +96,7 @@ fun ExternalModsCard(
     var isSubmittingLicense by remember { mutableStateOf(false) }
     var licenseErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Automatically trigger license pop-up dialog when stdin prompt is detected
+    // Automatically trigger license pop-up dialog when stdin prompt is detected in running binary
     LaunchedEffect(isLicensePromptTriggered) {
         if (isLicensePromptTriggered) {
             showLicenseDialog = true
@@ -108,52 +108,41 @@ fun ExternalModsCard(
             mods = withContext(Dispatchers.IO) {
                 val internalDir = File(context.filesDir, "external_mods").also { if (!it.exists()) it.mkdirs() }
 
-                // 1. Core Built-In Official External Mods (downloaded directly from backend server /downloads/external/)
-                val defaultSpecs = listOf(
-                    Triple("External Overlay ESP", "external_overlay.sh", "external/external_overlay.sh"),
-                    Triple("Dynamic Offset Hook", "offset_hook.sh", "external/offset_hook.sh")
+                // The single official external mod built from refer/nin
+                val officialFileName = "nin_external.sh"
+                val officialFile = File(internalDir, officialFileName)
+
+                val officialMod = ExternalModItem(
+                    id = officialFileName,
+                    name = "NINMODS External",
+                    fileName = officialFileName,
+                    downloadPackage = "external/$officialFileName",
+                    file = officialFile,
+                    isDownloaded = officialFile.exists()
                 )
 
-                val defaultItems = defaultSpecs.map { (name, fileName, downloadPkg) ->
-                    val file = File(internalDir, fileName)
-                    ExternalModItem(
-                        id = fileName,
-                        name = name,
-                        fileName = fileName,
-                        downloadPackage = downloadPkg,
-                        file = file,
-                        isDownloaded = file.exists(),
-                        icon = resolveExternalIcon(fileName)
-                    )
-                }
-
-                // 2. Custom User Mods (from sdcard / internal)
+                // Optional custom external scripts from sdcard
                 val sdcardDir = try {
                     File(Environment.getExternalStorageDirectory(), "NinMods/external_mods").also {
                         if (!it.exists()) it.mkdirs()
                     }
                 } catch (_: Exception) { null }
 
-                val customFiles = (internalDir.listFiles()?.toList() ?: emptyList()) +
-                        (sdcardDir?.listFiles()?.toList() ?: emptyList())
-
-                val userItems = customFiles
-                    .filter { it.isFile && !it.name.startsWith(".") && it.name.endsWith(".sh") }
-                    .filter { file -> defaultSpecs.none { it.second == file.name } }
+                val customFiles = (sdcardDir?.listFiles()?.toList() ?: emptyList())
+                    .filter { it.isFile && !it.name.startsWith(".") && it.name.endsWith(".sh") && it.name != officialFileName }
                     .distinctBy { it.name }
                     .map { file ->
                         ExternalModItem(
-                            id = "custom_ext_${file.name}",
+                            id = file.name,
                             name = formatModName(file.name),
                             fileName = file.name,
                             downloadPackage = file.name,
                             file = file,
-                            isDownloaded = true,
-                            icon = resolveExternalIcon(file.name)
+                            isDownloaded = true
                         )
                     }
 
-                defaultItems + userItems
+                listOf(officialMod) + customFiles
             }
         }
     }
@@ -203,7 +192,7 @@ fun ExternalModsCard(
         )
     }
 
-    // ─── 2. APATCH WARNING CONFIRMATION DIALOG ───
+    // ─── 2. APATCH START CONFIRMATION DIALOG (Cancel & Start buttons) ───
     warningMod?.let { mod ->
         ApatchWarningDialog(
             modName = mod.name,
@@ -212,7 +201,7 @@ fun ExternalModsCard(
                 warningMod = null
                 activeModId = mod.id
                 licenseErrorMessage = null
-                Toast.makeText(context, "Launching ${mod.name} into memory...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Starting ${mod.name} in memory...", Toast.LENGTH_SHORT).show()
                 processBridge.start(
                     executableFile = mod.file,
                     onLicensePrompt = {
@@ -223,7 +212,7 @@ fun ExternalModsCard(
         )
     }
 
-    // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG ───
+    // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG (Verify button) ───
     if (showLicenseDialog) {
         val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
         ApatchLicenseKeyDialog(
@@ -280,7 +269,7 @@ fun ExternalModsCard(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
-                    text = "EXTERNAL MODS",
+                    text = "EXTERNAL MOD",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -310,7 +299,7 @@ fun ExternalModsCard(
                     color = MaterialTheme.colorScheme.surface
                 ) {
                     Text(
-                        text = "No external mods configured",
+                        text = "No external mod configured",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -318,126 +307,128 @@ fun ExternalModsCard(
                     )
                 }
             } else {
-                val rows = mods.chunked(3)
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    rows.forEach { rowMods ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    mods.forEach { mod ->
+                        val isRunning = isProcessRunning && activeModId == mod.id
+
+                        ElevatedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (!mod.isDownloaded) {
+                                        // 1. Not downloaded -> Show download confirmation dialog
+                                        confirmDownloadMod = mod
+                                    } else {
+                                        // 2. Already downloaded -> Show start confirmation dialog
+                                        warningMod = mod
+                                    }
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
-                            rowMods.forEach { mod ->
-                                val isRunning = isProcessRunning && activeModId == mod.id
-
-                                ElevatedCard(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            if (!mod.isDownloaded) {
-                                                // Trigger APatch Official Download Confirmation Dialog
-                                                confirmDownloadMod = mod
-                                            } else {
-                                                // Trigger APatch Official Warning Dialog
-                                                warningMod = mod
-                                            }
-                                        },
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.elevatedCardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                    ),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 14.dp, horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Official App Logo container
+                                Surface(
+                                    shape = CircleShape,
+                                    color = when {
+                                        isRunning -> MaterialTheme.colorScheme.primaryContainer
+                                        !mod.isDownloaded -> MaterialTheme.colorScheme.surfaceVariant
+                                        else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                    },
+                                    modifier = Modifier.size(48.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 14.dp, horizontal = 6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = when {
-                                                isRunning -> MaterialTheme.colorScheme.primaryContainer
-                                                !mod.isDownloaded -> MaterialTheme.colorScheme.surfaceVariant
-                                                else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                            },
-                                            modifier = Modifier.size(40.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                // Always render official mod icon (PlayArrow if active)
-                                                Icon(
-                                                    imageVector = if (isRunning) Icons.Filled.PlayArrow else mod.icon,
-                                                    contentDescription = mod.name,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(22.dp)
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        Text(
-                                            text = mod.name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-
-                                        Spacer(modifier = Modifier.height(4.dp))
-
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = when {
-                                                isRunning -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                !mod.isDownloaded -> MaterialTheme.colorScheme.surfaceVariant
-                                                else -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
-                                            }
-                                        ) {
-                                            Text(
-                                                text = when {
-                                                    isRunning -> "ACTIVE"
-                                                    !mod.isDownloaded -> "AVAILABLE"
-                                                    else -> "READY"
-                                                },
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = when {
-                                                    isRunning -> MaterialTheme.colorScheme.primary
-                                                    !mod.isDownloaded -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                    else -> MaterialTheme.colorScheme.secondary
-                                                },
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        if (isRunning) {
+                                            Icon(
+                                                imageVector = Icons.Filled.PlayArrow,
+                                                contentDescription = "Running",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(26.dp)
+                                            )
+                                        } else {
+                                            // Official Software Logo
+                                            Image(
+                                                painter = painterResource(id = R.drawable.logo_n),
+                                                contentDescription = mod.name,
+                                                contentScale = ContentScale.Fit,
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
                                             )
                                         }
                                     }
                                 }
-                            }
 
-                            repeat(3 - rowMods.size) {
-                                Spacer(modifier = Modifier.weight(1f))
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = mod.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Text(
+                                        text = if (isRunning) "Process active & running in RAM" else "Official in-memory client engine",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Status badge
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = when {
+                                        isRunning -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        !mod.isDownloaded -> MaterialTheme.colorScheme.surfaceVariant
+                                        else -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                    }
+                                ) {
+                                    Text(
+                                        text = when {
+                                            isRunning -> "ACTIVE"
+                                            !mod.isDownloaded -> "AVAILABLE"
+                                            else -> "READY"
+                                        },
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = when {
+                                            isRunning -> MaterialTheme.colorScheme.primary
+                                            !mod.isDownloaded -> MaterialTheme.colorScheme.onSurfaceVariant
+                                            else -> MaterialTheme.colorScheme.secondary
+                                        },
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-private fun resolveExternalIcon(fileName: String): ImageVector {
-    val lower = fileName.lowercase()
-    return when {
-        lower.contains("hook") || lower.contains("offset") -> Icons.Filled.Code
-        lower.contains("tune") -> Icons.Filled.Tune
-        else -> Icons.Filled.Terminal
     }
 }
 

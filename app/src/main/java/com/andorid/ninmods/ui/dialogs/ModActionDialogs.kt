@@ -251,8 +251,8 @@ fun ApatchDownloadDialog(
 }
 
 /**
- * APatch Official Warning Confirmation Dialog.
- * Displayed when user clicks a downloaded mod to confirm memory execution.
+ * APatch Official Start Confirmation Dialog.
+ * Displayed when user taps a downloaded mod to confirm memory execution.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -279,15 +279,15 @@ fun ApatchWarningDialog(
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.errorContainer,
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.size(56.dp)
                 ) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Filled.Warning,
+                            imageVector = Icons.Filled.PlayArrow,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(28.dp)
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
@@ -295,7 +295,7 @@ fun ApatchWarningDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Launch Kernel Mod",
+                    text = "Start Mod",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -304,7 +304,7 @@ fun ApatchWarningDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "You are about to launch \"$modName\" directly in memory using kernel driver root permissions.\n\nDo you want to proceed with execution?",
+                    text = "Do you want to start \"$modName\" in memory?",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -337,7 +337,7 @@ fun ApatchWarningDialog(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text(text = "Launch", fontWeight = FontWeight.Bold)
+                        Text(text = "Start", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -501,13 +501,13 @@ fun ApatchLicenseKeyDialog(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Activating...",
+                                    text = "Verifying...",
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
                             } else {
                                 Text(
-                                    text = "Activate",
+                                    text = "Verify",
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
