@@ -265,7 +265,7 @@ fun KernelModsCard(
                         showLicenseDialog = false
                         Toast.makeText(context, "License dispatched to core engine.", Toast.LENGTH_SHORT).show()
                     } else {
-                        val runningMod = kernelMods.find { it.id == activeModId }
+                        val runningMod = mods.find { it.id == activeModId }
                         if (runningMod != null) {
                             processBridge.stop()
                             processBridge.start(
