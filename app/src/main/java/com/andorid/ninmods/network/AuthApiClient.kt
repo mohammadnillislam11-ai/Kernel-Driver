@@ -522,15 +522,24 @@ object AuthApiClient {
             msg.isBlank() -> if (httpCode >= 500) "Server is temporarily unavailable. Please try again later." else "Request failed. Please try again."
             // Database / SQL / Backend internal errors
             msg.contains("doesn't exist", ignoreCase = true) ||
+            msg.contains("does not exist", ignoreCase = true) ||
+            msg.contains("table", ignoreCase = true) ||
+            msg.contains("smmtor", ignoreCase = true) ||
+            msg.contains("mysql", ignoreCase = true) ||
+            msg.contains("mariadb", ignoreCase = true) ||
             msg.contains("SQLSTATE", ignoreCase = true) || 
             msg.contains("PDOException", ignoreCase = true) || 
             msg.contains("database", ignoreCase = true) ||
             msg.contains("syntax error", ignoreCase = true) ||
             msg.contains("Access denied", ignoreCase = true) ||
             msg.contains("Unknown column", ignoreCase = true) ||
+            msg.contains("column", ignoreCase = true) ||
+            msg.contains("query", ignoreCase = true) ||
+            msg.contains("fatal", ignoreCase = true) ||
+            msg.contains("exception", ignoreCase = true) ||
             msg.contains("ECONNREFUSED", ignoreCase = true) ||
             msg.contains("Internal Server Error", ignoreCase = true) ||
-            httpCode >= 500 ->
+            httpCode in 500..599 ->
                 "Server is currently under maintenance. Please try again shortly."
             // Network / Connection issues
             msg.contains("Unable to resolve host", ignoreCase = true) || msg.contains("Cannot resolve server", ignoreCase = true) ->

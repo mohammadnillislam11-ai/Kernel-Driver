@@ -772,9 +772,8 @@ fun SettingsScreen(
     }
 
     if (showSetupDialog) {
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showSetupDialog = false },
-            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        com.andorid.ninmods.ui.dialogs.ApatchAnimatedDialog(
+            onDismissRequest = { showSetupDialog = false }
         ) {
             com.andorid.ninmods.ui.setup.InstallationSetupScreen(
                 onCompleteSetup = {

@@ -67,17 +67,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.window.SecureFlagPolicy
+import com.andorid.ninmods.util.ui.APDialogBlurBehindUtils
 
 /**
  * Official APatch Animated Dialog Wrapper.
- * Replaces instant pop-ups with authentic APatch 340ms scale-up and fade-in animations,
- * complete with smooth scrim darkening and dismiss physics.
+ * Uses Material 3 BasicAlertDialog with official APatch window blur behind physics,
+ * matching APatch's native alert dialog motion.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApatchAnimatedDialog(
     onDismissRequest: () -> Unit,
@@ -85,46 +92,29 @@ fun ApatchAnimatedDialog(
     dismissOnClickOutside: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    Dialog(
+    BasicAlertDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = dismissOnBackPress,
             dismissOnClickOutside = dismissOnClickOutside,
-            usePlatformDefaultWidth = false
+            decorFitsSystemWindows = true,
+            usePlatformDefaultWidth = false,
+            securePolicy = SecureFlagPolicy.SecureOff
         )
     ) {
-        var animateIn by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) {
-            animateIn = true
+        val view = LocalView.current
+        DisposableEffect(Unit) {
+            val window = (view.parent as? DialogWindowProvider)?.window
+            if (window != null) {
+                APDialogBlurBehindUtils.setupWindowBlurListener(window)
+            }
+            onDispose {}
         }
-
-        val scrimAlpha by animateFloatAsState(
-            targetValue = if (animateIn) 0.65f else 0f,
-            animationSpec = tween(340, easing = FastOutSlowInEasing),
-            label = "ScrimAnimation"
-        )
-
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = scrimAlpha))
-                .clickable(enabled = dismissOnClickOutside) { onDismissRequest() },
+            modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            AnimatedVisibility(
-                visible = animateIn,
-                enter = scaleIn(initialScale = 0.88f, animationSpec = tween(340, easing = FastOutSlowInEasing)) +
-                        fadeIn(animationSpec = tween(340)),
-                exit = scaleOut(targetScale = 0.88f, animationSpec = tween(250, easing = FastOutSlowInEasing)) +
-                        fadeOut(animationSpec = tween(250))
-            ) {
-                Box(
-                    modifier = Modifier.clickable(enabled = false) {}, // absorb clicks inside dialog
-                    contentAlignment = Alignment.Center
-                ) {
-                    content()
-                }
-            }
+            content()
         }
     }
 }
@@ -170,9 +160,9 @@ fun ApatchUnifiedModDialog(
         dismissOnClickOutside = state !is UnifiedModDialogState.Downloading
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(20.dp),
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             AnimatedContent(
@@ -703,9 +693,9 @@ fun ApatchConfirmDownloadDialog(
         dismissOnClickOutside = true
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(20.dp),
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             Column(
@@ -799,9 +789,9 @@ fun ApatchDownloadDialog(
         dismissOnClickOutside = false
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(20.dp),
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             Column(
@@ -903,9 +893,9 @@ fun ApatchWarningDialog(
         dismissOnClickOutside = true
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(20.dp),
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             Column(
@@ -1234,9 +1224,9 @@ fun ApatchRootRequiredDialog(
         dismissOnClickOutside = true
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(20.dp),
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             Column(

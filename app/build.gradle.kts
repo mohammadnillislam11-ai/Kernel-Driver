@@ -81,4 +81,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+
+    // Official APatch Root & Image Libraries
+    implementation("com.github.topjohnwu.libsu:core:5.2.2")
+    implementation("com.github.topjohnwu.libsu:io:5.2.2")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

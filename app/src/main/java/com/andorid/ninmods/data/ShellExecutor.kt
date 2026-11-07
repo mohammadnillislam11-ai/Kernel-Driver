@@ -78,47 +78,58 @@ object ShellExecutor {
 
     /**
      * Executes a single command as root synchronously on the calling thread (or dispatcher).
+     * Leverages LibSu with automatic fallback to ProcessBuilder.
      */
     fun executeRoot(command: String): Boolean {
         return try {
-            val suBin = listOf(
-                "/system/bin/su",
-                "/system/xbin/su",
-                "/data/adb/ap/bin/su",
-                "/data/adb/magisk/su"
-            ).firstOrNull { java.io.File(it).exists() } ?: "su"
+            val res = com.topjohnwu.superuser.Shell.cmd(command).exec()
+            res.isSuccess
+        } catch (_: Exception) {
+            try {
+                val suBin = listOf(
+                    "/system/bin/su",
+                    "/system/xbin/su",
+                    "/data/adb/ap/bin/su",
+                    "/data/adb/magisk/su"
+                ).firstOrNull { java.io.File(it).exists() } ?: "su"
 
-            val proc = ProcessBuilder(suBin, "-c", command).start()
-            val exitCode = proc.waitFor()
-            exitCode == 0
-        } catch (e: Exception) {
-            false
+                val proc = ProcessBuilder(suBin, "-c", command).start()
+                val exitCode = proc.waitFor()
+                exitCode == 0
+            } catch (e: Exception) {
+                false
+            }
         }
     }
 
     /**
      * Checks if genuine Superuser (Root) access is granted and available.
+     * Uses APatch official LibSu root verification with fallback checks.
      */
     fun isRootAvailable(): Boolean {
-        val knownSuPaths = listOf(
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/sbin/su",
-            "/data/adb/ap/bin/su",
-            "/data/adb/magisk/su",
-            "/data/adb/ksu/bin/su"
-        )
-        val hasBinary = knownSuPaths.any { java.io.File(it).exists() }
-
         return try {
-            val suBin = knownSuPaths.firstOrNull { java.io.File(it).exists() } ?: "su"
-            val proc = ProcessBuilder(suBin, "-c", "id").start()
-            val reader = BufferedReader(InputStreamReader(proc.inputStream))
-            val line = reader.readLine()
-            val exitCode = proc.waitFor()
-            exitCode == 0 && (line?.contains("uid=0") == true || hasBinary)
+            com.topjohnwu.superuser.Shell.isAppGrantedRoot() == true || com.topjohnwu.superuser.Shell.getShell().isRoot
         } catch (_: Exception) {
-            false
+            val knownSuPaths = listOf(
+                "/system/bin/su",
+                "/system/xbin/su",
+                "/sbin/su",
+                "/data/adb/ap/bin/su",
+                "/data/adb/magisk/su",
+                "/data/adb/ksu/bin/su"
+            )
+            val hasBinary = knownSuPaths.any { java.io.File(it).exists() }
+
+            try {
+                val suBin = knownSuPaths.firstOrNull { java.io.File(it).exists() } ?: "su"
+                val proc = ProcessBuilder(suBin, "-c", "id").start()
+                val reader = BufferedReader(InputStreamReader(proc.inputStream))
+                val line = reader.readLine()
+                val exitCode = proc.waitFor()
+                exitCode == 0 && (line?.contains("uid=0") == true || hasBinary)
+            } catch (_: Exception) {
+                hasBinary
+            }
         }
     }
 }

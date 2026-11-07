@@ -3,6 +3,9 @@ package com.andorid.ninmods.ui.login
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,7 +48,13 @@ class LoginActivity : ComponentActivity() {
 
         setContent {
             APatchTheme {
-                var showSetup by remember { mutableStateOf(!sessionManager.isEnvironmentSetup) }
+                val context = this@LoginActivity
+                val isOverlayMissing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)
+                val isStorageMissing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()
+
+                var showSetup by remember {
+                    mutableStateOf(!sessionManager.isEnvironmentSetup || isOverlayMissing || isStorageMissing)
+                }
 
                 AnimatedContent(
                     targetState = showSetup,
@@ -80,7 +89,11 @@ class LoginActivity : ComponentActivity() {
                             }
                         )
                     } else {
-                        LoginScreen { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
+                        LoginScreen(
+                            onOpenSetup = {
+                                showSetup = true
+                            },
+                            onLoginSuccess = { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
                             sessionManager.isLoggedIn = true
                             sessionManager.userEmail = email
                             sessionManager.userName = name
@@ -100,8 +113,9 @@ class LoginActivity : ComponentActivity() {
                             Toast.makeText(this@LoginActivity, "Welcome, $name", Toast.LENGTH_SHORT).show()
                             navigateToMain()
                         }
-                    }
+                    )
                 }
+            }
             }
         }
     }

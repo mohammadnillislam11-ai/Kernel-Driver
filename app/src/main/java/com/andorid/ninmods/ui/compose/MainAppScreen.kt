@@ -55,15 +55,38 @@ import com.andorid.ninmods.ui.loader.DriverLoaderScreen
 import com.andorid.ninmods.ui.profile.ProfileScreen
 import com.andorid.ninmods.ui.settings.SettingsScreen
 
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.size
+import com.andorid.ninmods.R
+
 enum class MainDestination(
-    val label: String,
-    val selectedIcon: ImageVector,
-    val unselectedIcon: ImageVector
+    @StringRes val labelRes: Int,
+    @DrawableRes val selectedDrawable: Int,
+    @DrawableRes val unselectedDrawable: Int
 ) {
-    DASHBOARD("Dashboard", Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
-    LOADER("Driver Loader", Icons.Filled.Build, Icons.Outlined.Build),
-    SETTINGS("Settings", Icons.Filled.Settings, Icons.Outlined.Settings),
-    PROFILE("Profile", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle)
+    DASHBOARD(
+        labelRes = R.string.home,
+        selectedDrawable = R.drawable.ic_nav_home_fill,
+        unselectedDrawable = R.drawable.ic_nav_home
+    ),
+    LOADER(
+        labelRes = R.string.nav_drivers,
+        selectedDrawable = R.drawable.ic_nav_wrench,
+        unselectedDrawable = R.drawable.ic_nav_wrench
+    ),
+    SETTINGS(
+        labelRes = R.string.settings,
+        selectedDrawable = R.drawable.ic_nav_gear,
+        unselectedDrawable = R.drawable.ic_nav_gear
+    ),
+    PROFILE(
+        labelRes = R.string.about,
+        selectedDrawable = R.drawable.ic_user_profile,
+        unselectedDrawable = R.drawable.ic_user_profile
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,7 +133,7 @@ fun MainAppScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = currentDestination.label,
+                        text = stringResource(id = currentDestination.labelRes),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -132,8 +155,9 @@ fun MainAppScreen(
                             currentDestination = MainDestination.PROFILE
                         }) {
                             Icon(
-                                imageVector = Icons.Filled.AccountCircle,
+                                painter = painterResource(id = R.drawable.ic_user_profile),
                                 contentDescription = "Profile",
+                                modifier = Modifier.size(24.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -166,13 +190,14 @@ fun MainAppScreen(
                                 onClick = { currentDestination = dest },
                                 icon = {
                                     Icon(
-                                        imageVector = if (isSelected) dest.selectedIcon else dest.unselectedIcon,
-                                        contentDescription = dest.label
+                                        painter = painterResource(id = if (isSelected) dest.selectedDrawable else dest.unselectedDrawable),
+                                        contentDescription = stringResource(id = dest.labelRes),
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 },
                                 label = {
                                     Text(
-                                        text = dest.label,
+                                        text = stringResource(id = dest.labelRes),
                                         maxLines = 1,
                                         softWrap = false
                                     )
