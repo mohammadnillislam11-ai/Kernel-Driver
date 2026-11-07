@@ -60,6 +60,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -138,6 +139,7 @@ fun LoginScreen(
                 when (state) {
                     AuthScreenState.LOGIN -> {
                         LoginContent(
+                            onOpenSetup = onOpenSetup,
                             onSuccess = onLoginSuccess,
                             onNavigateToSignUp = { authState = AuthScreenState.SIGNUP },
                             onNavigateToForgotPassword = { authState = AuthScreenState.FORGOT_PASSWORD }
@@ -161,6 +163,7 @@ fun LoginScreen(
 
 @Composable
 private fun LoginContent(
+    onOpenSetup: (() -> Unit)? = null,
     onSuccess: (
         email: String,
         name: String,

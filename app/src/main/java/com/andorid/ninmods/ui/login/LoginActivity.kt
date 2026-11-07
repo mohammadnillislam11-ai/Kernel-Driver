@@ -3,7 +3,6 @@ package com.andorid.ninmods.ui.login
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast

@@ -148,6 +148,7 @@ object ModDownloader {
             }
 
             val contentLength = if (!isFromAssetFallback && conn != null) conn.contentLength.toLong() else 0L
+            val inStream = inputStream ?: return@withContext Result.failure(Exception("Failed to open mod download stream."))
 
             val tempFile = File(targetDir, "tmp_${System.currentTimeMillis()}_$fileName")
             outputStream = FileOutputStream(tempFile)
@@ -156,7 +157,7 @@ object ModDownloader {
             var bytesRead: Int
             var totalBytesRead = 0L
 
-            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+            while (inStream.read(buffer).also { bytesRead = it } != -1) {
                 outputStream.write(buffer, 0, bytesRead)
                 totalBytesRead += bytesRead
                 if (contentLength > 0) {
