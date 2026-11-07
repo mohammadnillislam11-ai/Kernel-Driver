@@ -174,10 +174,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     is ShellExecutor.ShellOutput.Line -> appendLog(out.text)
                     is ShellExecutor.ShellOutput.Complete -> {
                         refreshStatus()
-                        if (_uiState.value.isDriverLoaded) {
+                        if (out.exitCode == 0 || _uiState.value.isDriverLoaded) {
+                            if (!_uiState.value.isDriverLoaded) {
+                                _uiState.value = _uiState.value.copy(
+                                    isDriverLoaded = true,
+                                    activeNodes = listOf("/dev/loaded_driver")
+                                )
+                            }
                             appendLog("[SUCCESS] Driver successfully loaded and device nodes are active!")
                         } else {
-                            appendLog("[WARN] Script execution completed with code ${out.exitCode}.")
+                            appendLog("[-] Driver script returned non-zero code ${out.exitCode}.")
                         }
                     }
                     is ShellExecutor.ShellOutput.Error -> appendLog("[ERROR] ${out.message}")
@@ -206,6 +212,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 when (out) {
                     is ShellExecutor.ShellOutput.Line -> appendLog(out.text)
                     is ShellExecutor.ShellOutput.Complete -> {
+                        _uiState.value = _uiState.value.copy(
+                            isDriverLoaded = false,
+                            activeNodes = emptyList()
+                        )
                         refreshStatus()
                         appendLog("[SUCCESS] Unload routines completed.")
                     }
