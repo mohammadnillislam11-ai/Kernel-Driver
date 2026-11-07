@@ -139,6 +139,10 @@ fun InstallationSetupScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        checkAllPermissions()
+    }
+
     // Real-time re-check when user returns from settings
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->

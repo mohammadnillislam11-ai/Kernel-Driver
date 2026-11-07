@@ -211,12 +211,17 @@ fun KernelModsCard(
             modName = mod.name,
             onDismiss = { warningMod = null },
             onConfirmLaunch = {
+                val targetMod = mod
                 warningMod = null
-                activeModId = mod.id
+                activeModId = targetMod.id
                 licenseErrorMessage = null
-                Toast.makeText(context, "Launching ${mod.name} into memory...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Launching ${targetMod.name} into memory...", Toast.LENGTH_SHORT).show()
+                val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
                 processBridge.start(
-                    executableFile = mod.file,
+                    executableFile = targetMod.file,
+                    deviceHwid = deviceHwid,
+                    licenseKey = initialKey,
                     onLicensePrompt = {
                         showLicenseDialog = true
                     }
@@ -241,13 +246,39 @@ fun KernelModsCard(
                 isSubmittingLicense = true
                 licenseErrorMessage = null
                 scope.launch {
+                    val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
+                    val activationResult = com.andorid.ninmods.network.AuthApiClient.activateLicense(
+                        licenseKey = submittedKey,
+                        hwid = deviceHwid
+                    )
+                    if (activationResult.isSuccess) {
+                        val licInfo = activationResult.getOrNull()
+                        sessionManager?.let { sm ->
+                            sm.activeLicenseKey = submittedKey
+                            sm.serverRemainingSeconds = licInfo?.remainingSeconds ?: 86400L
+                        }
+                    }
+
                     val sent = processBridge.sendInput(submittedKey)
                     isSubmittingLicense = false
                     if (sent) {
                         showLicenseDialog = false
                         Toast.makeText(context, "License dispatched to core engine.", Toast.LENGTH_SHORT).show()
                     } else {
-                        licenseErrorMessage = "Failed to communicate with running background process."
+                        val runningMod = kernelMods.find { it.id == activeModId }
+                        if (runningMod != null) {
+                            processBridge.stop()
+                            processBridge.start(
+                                executableFile = runningMod.file,
+                                deviceHwid = deviceHwid,
+                                licenseKey = submittedKey,
+                                onLicensePrompt = { showLicenseDialog = true }
+                            )
+                            showLicenseDialog = false
+                            Toast.makeText(context, "Engine reloaded with active license.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            licenseErrorMessage = "Failed to communicate with running background process."
+                        }
                     }
                 }
             }

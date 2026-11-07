@@ -7,6 +7,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,8 +37,8 @@ class LoginActivity : ComponentActivity() {
 
         sessionManager = SessionManager(this)
 
-        // If user already authenticated, remember session is on, and setup is completed: navigate to MainActivity
-        if (sessionManager.isEnvironmentSetup && sessionManager.isLoggedIn && sessionManager.rememberLogin) {
+        // If user already authenticated, remember session is on: navigate to MainActivity
+        if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
             navigateToMain()
             return
         }
@@ -39,45 +47,59 @@ class LoginActivity : ComponentActivity() {
             APatchTheme {
                 var showSetup by remember { mutableStateOf(!sessionManager.isEnvironmentSetup) }
 
-                if (showSetup) {
-                    InstallationSetupScreen(
-                        onCompleteSetup = {
-                            sessionManager.isEnvironmentSetup = true
-                            if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
-                                navigateToMain()
-                            } else {
-                                showSetup = false
+                AnimatedContent(
+                    targetState = showSetup,
+                    transitionSpec = {
+                        if (targetState) {
+                            (slideInHorizontally(initialOffsetX = { -it / 4 }, animationSpec = tween(340, easing = FastOutSlowInEasing)) + fadeIn(animationSpec = tween(340)))
+                                .togetherWith(slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(340, easing = FastOutSlowInEasing)) + fadeOut(animationSpec = tween(340)))
+                        } else {
+                            (slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(340, easing = FastOutSlowInEasing)) + fadeIn(animationSpec = tween(340)))
+                                .togetherWith(slideOutHorizontally(targetOffsetX = { -it / 4 }, animationSpec = tween(340, easing = FastOutSlowInEasing)) + fadeOut(animationSpec = tween(340)))
+                        }
+                    },
+                    label = "SetupToLoginTransition"
+                ) { isSetupVisible ->
+                    if (isSetupVisible) {
+                        InstallationSetupScreen(
+                            onCompleteSetup = {
+                                sessionManager.isEnvironmentSetup = true
+                                if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
+                                    navigateToMain()
+                                } else {
+                                    showSetup = false
+                                }
+                            },
+                            onSkipSetup = {
+                                sessionManager.isEnvironmentSetup = true
+                                if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
+                                    navigateToMain()
+                                } else {
+                                    showSetup = false
+                                }
                             }
-                        },
-                        onSkipSetup = {
-                            sessionManager.isEnvironmentSetup = true
-                            if (sessionManager.isLoggedIn && sessionManager.rememberLogin) {
-                                navigateToMain()
-                            } else {
-                                showSetup = false
+                        )
+                    } else {
+                        LoginScreen { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
+                            sessionManager.isLoggedIn = true
+                            sessionManager.userEmail = email
+                            sessionManager.userName = name
+                            sessionManager.authToken = apiKey
+                            sessionManager.rememberLogin = remember
+                            sessionManager.userRole = role
+                            sessionManager.userBalance = balance
+                            if (!activeKey.isNullOrBlank()) {
+                                sessionManager.activeLicenseKey = activeKey
                             }
-                        }
-                    )
-                } else {
-                    LoginScreen { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
-                        sessionManager.isLoggedIn = true
-                        sessionManager.userEmail = email
-                        sessionManager.userName = name
-                        sessionManager.authToken = apiKey
-                        sessionManager.rememberLogin = remember
-                        sessionManager.userRole = role
-                        sessionManager.userBalance = balance
-                        if (!activeKey.isNullOrBlank()) {
-                            sessionManager.activeLicenseKey = activeKey
-                        }
 
-                        if (licenseRemainingSec != null && licenseRemainingSec > 0) {
-                            sessionManager.serverRemainingSeconds = licenseRemainingSec
-                            sessionManager.licenseExpiryMillis = System.currentTimeMillis() + (licenseRemainingSec * 1000L)
-                        }
+                            if (licenseRemainingSec != null && licenseRemainingSec > 0) {
+                                sessionManager.serverRemainingSeconds = licenseRemainingSec
+                                sessionManager.licenseExpiryMillis = System.currentTimeMillis() + (licenseRemainingSec * 1000L)
+                            }
 
-                        Toast.makeText(this, "Welcome, $name", Toast.LENGTH_SHORT).show()
-                        navigateToMain()
+                            Toast.makeText(this@LoginActivity, "Welcome, $name", Toast.LENGTH_SHORT).show()
+                            navigateToMain()
+                        }
                     }
                 }
             }

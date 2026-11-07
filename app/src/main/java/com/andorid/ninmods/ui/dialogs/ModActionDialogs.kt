@@ -1,9 +1,18 @@
 package com.andorid.ninmods.ui.dialogs
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +39,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,7 +70,64 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+
+/**
+ * Official APatch Animated Dialog Wrapper.
+ * Replaces instant pop-ups with authentic APatch 340ms scale-up and fade-in animations,
+ * complete with smooth scrim darkening and dismiss physics.
+ */
+@Composable
+fun ApatchAnimatedDialog(
+    onDismissRequest: () -> Unit,
+    dismissOnBackPress: Boolean = true,
+    dismissOnClickOutside: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = dismissOnBackPress,
+            dismissOnClickOutside = dismissOnClickOutside,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        var animateIn by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            animateIn = true
+        }
+
+        val scrimAlpha by animateFloatAsState(
+            targetValue = if (animateIn) 0.65f else 0f,
+            animationSpec = tween(340, easing = FastOutSlowInEasing),
+            label = "ScrimAnimation"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = scrimAlpha))
+                .clickable(enabled = dismissOnClickOutside) { onDismissRequest() },
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedVisibility(
+                visible = animateIn,
+                enter = scaleIn(initialScale = 0.88f, animationSpec = tween(340, easing = FastOutSlowInEasing)) +
+                        fadeIn(animationSpec = tween(340)),
+                exit = scaleOut(targetScale = 0.88f, animationSpec = tween(250, easing = FastOutSlowInEasing)) +
+                        fadeOut(animationSpec = tween(250))
+            ) {
+                Box(
+                    modifier = Modifier.clickable(enabled = false) {}, // absorb clicks inside dialog
+                    contentAlignment = Alignment.Center
+                ) {
+                    content()
+                }
+            }
+        }
+    }
+}
 
 /**
  * APatch Unified Mod Dialog State Machine.
@@ -99,12 +164,10 @@ fun ApatchUnifiedModDialog(
     onStartMod: () -> Unit = {},
     onConfirmStop: () -> Unit = {}
 ) {
-    BasicAlertDialog(
+    ApatchAnimatedDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = state !is UnifiedModDialogState.Downloading,
-            dismissOnClickOutside = state !is UnifiedModDialogState.Downloading
-        )
+        dismissOnBackPress = state !is UnifiedModDialogState.Downloading,
+        dismissOnClickOutside = state !is UnifiedModDialogState.Downloading
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -112,7 +175,14 @@ fun ApatchUnifiedModDialog(
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
-            Crossfade(targetState = state, label = "UnifiedDialogTransition") { currentState ->
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    (scaleIn(initialScale = 0.94f, animationSpec = tween(340, easing = FastOutSlowInEasing)) + fadeIn(animationSpec = tween(340)))
+                        .togetherWith(scaleOut(targetScale = 0.94f, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(animationSpec = tween(250)))
+                },
+                label = "UnifiedDialogTransition"
+            ) { currentState ->
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -627,9 +697,10 @@ fun ApatchConfirmDownloadDialog(
     onDismiss: () -> Unit,
     onConfirmDownload: () -> Unit
 ) {
-    BasicAlertDialog(
+    ApatchAnimatedDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -722,9 +793,10 @@ fun ApatchDownloadDialog(
     progress: Int,
     onCancel: () -> Unit
 ) {
-    BasicAlertDialog(
+    ApatchAnimatedDialog(
         onDismissRequest = onCancel,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
+        dismissOnBackPress = true,
+        dismissOnClickOutside = false
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -825,9 +897,10 @@ fun ApatchWarningDialog(
     onDismiss: () -> Unit,
     onConfirmLaunch: () -> Unit
 ) {
-    BasicAlertDialog(
+    ApatchAnimatedDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -927,9 +1000,10 @@ fun ApatchLicenseKeyDialog(
     var keyText by remember(initialKey) { mutableStateOf(initialKey) }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    BasicAlertDialog(
+    ApatchAnimatedDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        properties = DialogProperties(dismissOnBackPress = !isSubmitting, dismissOnClickOutside = false)
+        dismissOnBackPress = !isSubmitting,
+        dismissOnClickOutside = false
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -1154,9 +1228,10 @@ fun ApatchRootRequiredDialog(
     errorMessage: String? = null,
     onDismiss: () -> Unit
 ) {
-    BasicAlertDialog(
+    ApatchAnimatedDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
