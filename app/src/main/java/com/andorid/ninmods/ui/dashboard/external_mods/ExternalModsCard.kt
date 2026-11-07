@@ -56,6 +56,7 @@ import com.andorid.ninmods.data.ShellExecutor
 import com.andorid.ninmods.ui.dialogs.ApatchUnifiedModDialog
 import com.andorid.ninmods.ui.dialogs.UnifiedModDialogState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File

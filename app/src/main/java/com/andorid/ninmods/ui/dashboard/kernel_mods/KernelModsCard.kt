@@ -57,6 +57,7 @@ import com.andorid.ninmods.ui.dialogs.ApatchDownloadDialog
 import com.andorid.ninmods.ui.dialogs.ApatchLicenseKeyDialog
 import com.andorid.ninmods.ui.dialogs.ApatchWarningDialog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
