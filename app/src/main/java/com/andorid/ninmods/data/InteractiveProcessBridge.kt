@@ -28,6 +28,9 @@ class InteractiveProcessBridge(
     private var outputStream: DataOutputStream? = null
     private var readerJob: Job? = null
 
+    private val _isProcessAlive = MutableStateFlow(false)
+    val isProcessAlive: StateFlow<Boolean> = _isProcessAlive.asStateFlow()
+
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
@@ -54,7 +57,7 @@ class InteractiveProcessBridge(
         onLicensePrompt: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
-        if (_isRunning.value) return
+        if (_isProcessAlive.value) return
 
         scope.launch(Dispatchers.IO) {
             try {
@@ -75,32 +78,38 @@ class InteractiveProcessBridge(
                     .start()
 
                 activeProcess = proc
+                _isProcessAlive.value = true
                 val out = DataOutputStream(proc.outputStream)
                 outputStream = out
 
                 // 1. Purge previous conflicting instances to guarantee zero resource collision
                 out.writeBytes("killall -9 gemini-cli 2>/dev/null; pkill -9 -f gemini_proc 2>/dev/null; rm -f /data/local/tmp/.gemini_proc_* 2>/dev/null\n")
 
+                val safePath = executableFile.absolutePath.replace("'", "'\\''")
+                val safeDir = workingDir.absolutePath.replace("'", "'\\''")
+
                 // Grant execution rights and setup shared environment
-                out.writeBytes("chmod 755 '${executableFile.absolutePath}'\n")
-                out.writeBytes("cd '${workingDir.absolutePath}'\n")
+                out.writeBytes("chmod 755 '$safePath'\n")
+                out.writeBytes("cd '$safeDir'\n")
 
                 if (deviceHwid.isNotBlank()) {
-                    out.writeBytes("export NIN_DEVICE_HWID='$deviceHwid'\n")
-                    out.writeBytes("echo '$deviceHwid' > /data/local/tmp/.nin_hwid 2>/dev/null\n")
+                    val safeHwid = deviceHwid.replace("'", "'\\''")
+                    out.writeBytes("export NIN_DEVICE_HWID='$safeHwid'\n")
+                    out.writeBytes("echo '$safeHwid' > /data/local/tmp/.nin_hwid 2>/dev/null\n")
                     out.writeBytes("chmod 644 /data/local/tmp/.nin_hwid 2>/dev/null\n")
                 }
                 if (licenseKey.isNotBlank()) {
-                    out.writeBytes("export NIN_LICENSE_KEY='$licenseKey'\n")
+                    val safeKey = licenseKey.replace("'", "'\\''")
+                    out.writeBytes("export NIN_LICENSE_KEY='$safeKey'\n")
                 }
                 out.writeBytes("export NIN_SERVER_URL='${com.andorid.ninmods.config.AppConfig.BASE_URL.trimEnd('/')}'\n")
                 out.writeBytes("export LD_LIBRARY_PATH='/apex/com.android.i18n/lib64:/apex/com.android.runtime/lib64:/system/lib64:/vendor/lib64:/apex/com.android.i18n/lib:/apex/com.android.runtime/lib:/system/lib:/vendor/lib:'\"\$LD_LIBRARY_PATH\"\n")
 
                 // Launch using exec so the su process is directly replaced by the mod binary
                 if (executableFile.name.endsWith(".sh")) {
-                    out.writeBytes("exec sh '${executableFile.absolutePath}'\n")
+                    out.writeBytes("exec sh '$safePath'\n")
                 } else {
-                    out.writeBytes("exec '${executableFile.absolutePath}'\n")
+                    out.writeBytes("exec '$safePath'\n")
                 }
                 out.flush()
 
@@ -157,6 +166,7 @@ class InteractiveProcessBridge(
                 val exitCode = proc.waitFor()
                 val wasRunning = _isRunning.value
                 val wasReady = _isReadyToStart.value
+                _isProcessAlive.value = false
                 _isRunning.value = false
                 _licensePromptTriggered.value = false
                 _isReadyToStart.value = false
@@ -169,6 +179,7 @@ class InteractiveProcessBridge(
                 }
 
             } catch (e: Exception) {
+                _isProcessAlive.value = false
                 _isRunning.value = false
                 val err = e.message ?: "Failed to spawn root process"
                 _executionStatus.value = "Execution failed: $err"
@@ -204,8 +215,11 @@ class InteractiveProcessBridge(
     }
 
     private fun cleanup() {
+        _isProcessAlive.value = false
+        _isRunning.value = false
+        _licensePromptTriggered.value = false
+        _isReadyToStart.value = false
         try {
-            outputStream?.writeBytes("killall -9 gemini-cli 2>/dev/null; pkill -9 -f gemini_proc 2>/dev/null\n")
             outputStream?.writeBytes("exit\n")
             outputStream?.flush()
         } catch (_: Exception) {}
@@ -215,8 +229,7 @@ class InteractiveProcessBridge(
         readerJob?.cancel()
         activeProcess = null
         outputStream = null
-        _isRunning.value = false
-        _licensePromptTriggered.value = false
-        _isReadyToStart.value = false
+        // Ensure root background instances are truly wiped
+        ShellExecutor.executeRoot("killall -9 gemini-cli 2>/dev/null; pkill -9 -f gemini_proc 2>/dev/null; rm -f /data/local/tmp/.gemini_proc_* 2>/dev/null")
     }
 }

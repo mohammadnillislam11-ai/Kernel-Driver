@@ -113,7 +113,7 @@ fun ExternalModsCard(
     // Automatically trigger license pop-up dialog when stdin prompt is detected in running binary
     LaunchedEffect(isLicensePromptTriggered) {
         if (isLicensePromptTriggered) {
-            val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+            val initialKey = sessionManager?.activeLicenseKey ?: ""
             val current = unifiedDialogState
             if (current !is UnifiedModDialogState.LicenseAuth) {
                 unifiedDialogState = UnifiedModDialogState.LicenseAuth(
@@ -226,7 +226,7 @@ fun ExternalModsCard(
             }
 
             activeModId = mod.id
-            val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+            val initialKey = sessionManager?.activeLicenseKey ?: ""
             unifiedDialogState = UnifiedModDialogState.LicenseAuth(
                 initialKey = initialKey,
                 isSubmitting = false,
@@ -270,10 +270,13 @@ fun ExternalModsCard(
         }
     }
 
+    var downloadJob by remember { mutableStateOf<Job?>(null) }
+
     fun startDownload(mod: ExternalModItem) {
         selectedModForAction = mod
         unifiedDialogState = UnifiedModDialogState.Downloading(mod.name, 0)
-        scope.launch {
+        downloadJob?.cancel()
+        downloadJob = scope.launch {
             val result = ModDownloader.downloadMod(
                 context = context,
                 downloadUrl = mod.downloadPackage,
@@ -299,6 +302,8 @@ fun ExternalModsCard(
         ApatchUnifiedModDialog(
             state = state,
             onDismiss = {
+                downloadJob?.cancel()
+                downloadJob = null
                 if (state is UnifiedModDialogState.LicenseAuth) {
                     processBridge.stop()
                     activeModId = null
@@ -309,6 +314,8 @@ fun ExternalModsCard(
                 selectedModForAction?.let { startDownload(it) }
             },
             onCancelDownload = {
+                downloadJob?.cancel()
+                downloadJob = null
                 unifiedDialogState = null
             },
             onSubmitKey = { submittedKey ->
@@ -339,7 +346,7 @@ fun ExternalModsCard(
 
                             // 2. Feed to stdin pipe if alive, or cleanly restart process with pre-authenticated key
                             val sent = processBridge.sendInput(submittedKey)
-                            if (!sent || !processBridge.isRunning.value) {
+                            if (!sent || !processBridge.isProcessAlive.value) {
                                 selectedModForAction?.let { mod ->
                                     processBridge.stop()
                                     processBridge.start(

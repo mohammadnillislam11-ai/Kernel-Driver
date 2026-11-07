@@ -92,8 +92,8 @@ fun SettingsScreen(
     var isNotificationGranted by remember { mutableStateOf(false) }
     var showSetupDialog by remember { mutableStateOf(false) }
 
-    var globalNamespace by remember { mutableStateOf(true) }
-    var legacySu by remember { mutableStateOf(false) }
+    var globalNamespace by remember { mutableStateOf(sessionManager.globalNamespace) }
+    var legacySu by remember { mutableStateOf(sessionManager.legacySu) }
     var showRebootSheet by remember { mutableStateOf(false) }
 
     var isCheckingUpdate by remember { mutableStateOf(false) }
@@ -154,13 +154,7 @@ fun SettingsScreen(
         isNotificationGranted = checkNotification(context)
         scope.launch(Dispatchers.IO) {
             val rootInfo = RootDetector.detect(context)
-            val suTest = try {
-                val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-                val out = p.inputStream.bufferedReader().readText()
-                out.contains("uid=0")
-            } catch (e: Exception) {
-                false
-            }
+            val suTest = ShellExecutor.isRootAvailable()
             withContext(Dispatchers.Main) {
                 rootManagerName = rootInfo.managerName
                 isRooted = rootInfo.isRooted
@@ -269,13 +263,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .clickable {
                             scope.launch(Dispatchers.IO) {
-                                val granted = try {
-                                    val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-                                    val out = p.inputStream.bufferedReader().readText()
-                                    out.contains("uid=0")
-                                } catch (e: Exception) {
-                                    false
-                                }
+                                val granted = ShellExecutor.isRootAvailable()
                                 withContext(Dispatchers.Main) {
                                     isSuGranted = granted
                                     val msg = if (granted) "SuperUser (uid=0) authorized!" else "SuperUser request denied."
@@ -475,7 +463,10 @@ fun SettingsScreen(
                     title = "Global Namespace",
                     summary = "Mount namespace shared with system services",
                     checked = globalNamespace,
-                    onCheckedChange = { globalNamespace = it }
+                    onCheckedChange = {
+                        globalNamespace = it
+                        sessionManager.globalNamespace = it
+                    }
                 )
 
                 SwitchItem(
@@ -483,7 +474,10 @@ fun SettingsScreen(
                     title = "Legacy su Compatibility",
                     summary = "Provide /system/bin/su symlink",
                     checked = legacySu,
-                    onCheckedChange = { legacySu = it }
+                    onCheckedChange = {
+                        legacySu = it
+                        sessionManager.legacySu = it
+                    }
                 )
             }
         }
@@ -688,7 +682,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.size(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "DriverLoader v1.2.6",
+                        text = "NinMods DriverLoader ${com.andorid.ninmods.config.AppConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface

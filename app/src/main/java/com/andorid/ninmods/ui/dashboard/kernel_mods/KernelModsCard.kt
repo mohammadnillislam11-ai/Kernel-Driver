@@ -164,6 +164,8 @@ fun KernelModsCard(
         refreshMods()
     }
 
+    var kernelDownloadJob by remember { mutableStateOf<Job?>(null) }
+
     // ─── 0. APATCH CONFIRM DOWNLOAD POP-UP DIALOG ───
     confirmDownloadMod?.let { mod ->
         ApatchConfirmDownloadDialog(
@@ -173,7 +175,8 @@ fun KernelModsCard(
                 confirmDownloadMod = null
                 downloadingMod = mod
                 downloadProgress = 0
-                scope.launch {
+                kernelDownloadJob?.cancel()
+                kernelDownloadJob = scope.launch {
                     val result = ModDownloader.downloadMod(
                         context = context,
                         downloadUrl = mod.downloadPackage,
@@ -199,6 +202,8 @@ fun KernelModsCard(
             modName = mod.name,
             progress = downloadProgress,
             onCancel = {
+                kernelDownloadJob?.cancel()
+                kernelDownloadJob = null
                 downloadingMod = null
                 downloadProgress = 0
             }
@@ -217,7 +222,7 @@ fun KernelModsCard(
                 licenseErrorMessage = null
                 Toast.makeText(context, "Launching ${targetMod.name} into memory...", Toast.LENGTH_SHORT).show()
                 val deviceHwid = com.andorid.ninmods.util.DeviceIdentifier.getHwid(context)
-                val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+                val initialKey = sessionManager?.activeLicenseKey ?: ""
                 processBridge.start(
                     executableFile = targetMod.file,
                     deviceHwid = deviceHwid,
@@ -232,7 +237,7 @@ fun KernelModsCard(
 
     // ─── 3. APATCH MATERIAL 3 LICENSE KEY POP-UP DIALOG ───
     if (showLicenseDialog) {
-        val initialKey = sessionManager?.activeLicenseKey?.ifBlank { sessionManager?.userPassword ?: "" } ?: (sessionManager?.userPassword ?: "")
+        val initialKey = sessionManager?.activeLicenseKey ?: ""
         ApatchLicenseKeyDialog(
             initialKey = initialKey,
             isSubmitting = isSubmittingLicense,
@@ -261,7 +266,7 @@ fun KernelModsCard(
 
                     val sent = processBridge.sendInput(submittedKey)
                     isSubmittingLicense = false
-                    if (sent) {
+                    if (sent && processBridge.isProcessAlive.value) {
                         showLicenseDialog = false
                         Toast.makeText(context, "License dispatched to core engine.", Toast.LENGTH_SHORT).show()
                     } else {

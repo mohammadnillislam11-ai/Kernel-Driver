@@ -138,24 +138,30 @@ object ModDownloader {
             outputStream.close()
             outputStream = null
 
-            // If the downloaded file is a ZIP archive, extract its contents
-            val finalTargetFile: File = if (fileName.endsWith(".zip", ignoreCase = true) || isZipFile(tempFile)) {
+            // Check if downloaded file is genuinely a ZIP archive before attempting extraction
+            val isActualZip = isZipFile(tempFile)
+            val finalTargetFile: File = if (isActualZip) {
                 unzip(tempFile, targetDir)
                 tempFile.delete()
-                File(targetDir, fileName.removeSuffix(".zip") + ".sh").let {
-                    if (it.exists()) it else targetDir
-                }
+                val targetScript = File(targetDir, fileName.removeSuffix(".zip") + ".sh")
+                if (targetScript.exists()) targetScript else targetDir
             } else {
-                val destFile = File(targetDir, fileName)
+                // If downloaded as plain script fallback (even if URL had .zip), save as .sh
+                val destFileName = if (fileName.endsWith(".zip", ignoreCase = true)) {
+                    fileName.removeSuffix(".zip") + ".sh"
+                } else {
+                    fileName
+                }
+                val destFile = File(targetDir, destFileName)
                 if (destFile.exists()) destFile.delete()
                 tempFile.renameTo(destFile)
                 destFile
             }
 
-            // Ensure executable permissions
+            // Ensure executable permissions recursively across all unpacked binaries and scripts
             try {
                 finalTargetFile.setExecutable(true, false)
-                ShellExecutor.executeRoot("chmod 755 '${targetDir.absolutePath}'/*")
+                ShellExecutor.executeRoot("chmod -R 755 '${targetDir.absolutePath}'")
             } catch (_: Exception) {}
 
             onProgress(100)

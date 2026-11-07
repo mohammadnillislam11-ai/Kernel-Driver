@@ -364,6 +364,7 @@ fun DriverLoaderScreen(
             modName = "Kernel Drivers Package ($downloadingMode)",
             progress = downloadProgress,
             onCancel = {
+                viewModel.cancelDriverDownload()
                 isDownloadingDrivers = false
             }
         )

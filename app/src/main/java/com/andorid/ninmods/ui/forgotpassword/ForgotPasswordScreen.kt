@@ -62,6 +62,26 @@ fun ForgotPasswordScreen(
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
 
+    val submitReset = {
+        focusManager.clearFocus()
+        if (email.trim().isEmpty()) {
+            errorMessage = "Username or Email is required"
+        } else if (!isLoading) {
+            isLoading = true
+            errorMessage = null
+            scope.launch {
+                val result = AuthApiClient.resetPassword(email.trim())
+                isLoading = false
+                if (result.isSuccess) {
+                    successMessage = result.getOrThrow().message
+                    submitted = true
+                } else {
+                    errorMessage = AuthApiClient.sanitizeErrorMessage(result.exceptionOrNull()?.message)
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -130,14 +150,7 @@ fun ForgotPasswordScreen(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        if (email.trim().isNotEmpty()) {
-                            submitted = true
-                        } else {
-                            errorMessage = "Email is required"
-                        }
-                    }
+                    onDone = { submitReset() }
                 ),
                 shape = RoundedCornerShape(20.dp),
                 colors = TextFieldDefaults.colors(
@@ -163,26 +176,7 @@ fun ForgotPasswordScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = {
-                    focusManager.clearFocus()
-                    if (email.trim().isEmpty()) {
-                        errorMessage = "Username or Email is required"
-                        return@Button
-                    }
-
-                    isLoading = true
-                    errorMessage = null
-                    scope.launch {
-                        val result = AuthApiClient.resetPassword(email.trim())
-                        isLoading = false
-                        if (result.isSuccess) {
-                            successMessage = result.getOrThrow().message
-                            submitted = true
-                        } else {
-                            errorMessage = AuthApiClient.sanitizeErrorMessage(result.exceptionOrNull()?.message)
-                        }
-                    }
-                },
+                onClick = { submitReset() },
                 enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()

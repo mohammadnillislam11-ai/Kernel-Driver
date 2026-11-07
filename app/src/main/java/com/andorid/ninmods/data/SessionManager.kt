@@ -40,10 +40,13 @@ class SessionManager(context: Context) {
     var serverRemainingSeconds: Long
         get() = prefs.getLong("server_remaining_sec", 0L)
         set(value) {
+            val nowWall = System.currentTimeMillis()
+            val nowUptime = android.os.SystemClock.elapsedRealtime()
             prefs.edit()
                 .putLong("server_remaining_sec", value)
-                .putLong("sync_uptime_ms", android.os.SystemClock.elapsedRealtime())
-                .putLong("sync_wall_time_ms", System.currentTimeMillis())
+                .putLong("sync_uptime_ms", nowUptime)
+                .putLong("sync_wall_time_ms", nowWall)
+                .putLong("sync_boot_time_ms", nowWall - nowUptime)
                 .apply()
         }
 
@@ -55,12 +58,16 @@ class SessionManager(context: Context) {
             if (syncUptime == 0L) return base
 
             val currentUptime = android.os.SystemClock.elapsedRealtime()
-            val elapsedSec: Long = if (currentUptime >= syncUptime) {
+            val syncWall = prefs.getLong("sync_wall_time_ms", 0L)
+            val syncBootTime = prefs.getLong("sync_boot_time_ms", 0L)
+            val currentBootTime = System.currentTimeMillis() - currentUptime
+            val hasRebooted = (syncBootTime > 0L && kotlin.math.abs(currentBootTime - syncBootTime) > 5000L) || (currentUptime < syncUptime)
+
+            val elapsedSec: Long = if (!hasRebooted) {
                 // Monotonic counter: Immune to user date/time adjustments
                 (currentUptime - syncUptime) / 1000L
             } else {
-                // Device reboot detected: Uptime reset to 0
-                val syncWall = prefs.getLong("sync_wall_time_ms", 0L)
+                // Device reboot detected: fallback to wall-clock delta
                 if (syncWall > 0L) {
                     val wallDelta = (System.currentTimeMillis() - syncWall) / 1000L
                     kotlin.math.max(0L, wallDelta)
@@ -70,6 +77,14 @@ class SessionManager(context: Context) {
             }
             return kotlin.math.max(0L, base - elapsedSec)
         }
+
+    var globalNamespace: Boolean
+        get() = prefs.getBoolean("global_namespace", true)
+        set(value) = prefs.edit().putBoolean("global_namespace", value).apply()
+
+    var legacySu: Boolean
+        get() = prefs.getBoolean("legacy_su", false)
+        set(value) = prefs.edit().putBoolean("legacy_su", value).apply()
 
     var isEnvironmentSetup: Boolean
         get() = prefs.getBoolean(KEY_IS_SETUP, false)

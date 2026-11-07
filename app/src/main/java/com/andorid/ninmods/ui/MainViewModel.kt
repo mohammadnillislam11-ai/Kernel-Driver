@@ -104,13 +104,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private var driverDownloadJob: kotlinx.coroutines.Job? = null
+
     fun downloadAndPrepareDrivers(
         mode: String,
         onProgress: (Int) -> Unit,
         onComplete: (List<File>) -> Unit,
         onError: (String) -> Unit
     ) {
-        viewModelScope.launch {
+        driverDownloadJob?.cancel()
+        driverDownloadJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isWorking = true)
             appendLog("────────────────────────────────────────")
             appendLog("[DOWNLOAD] Drivers for $mode mode missing on device. Connecting to backend...")
@@ -135,6 +138,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun cancelDriverDownload() {
+        driverDownloadJob?.cancel()
+        driverDownloadJob = null
+        _uiState.value = _uiState.value.copy(isWorking = false)
+        appendLog("[CANCEL] Driver download cancelled by user.")
+    }
+
     suspend fun getDriversForMode(mode: String): List<File> {
         return repository.getAllDrivers(mode)
     }
@@ -148,12 +158,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isWorking = true)
             val path = file.absolutePath
+            val safePath = path.replace("'", "'\\''")
             appendLog("────────────────────────────────────────")
             appendLog("[EXEC] Preparing script: ${file.name}")
 
             val commands = listOf(
-                "chmod 777 '$path'",
-                "sh '$path'",
+                "chmod 755 '$safePath'",
+                "sh '$safePath'",
                 "for s in /sys/dev/char/*/uevent; do if [ -e \"\$s\" ]; then eval \"\$(grep -E '^(MAJOR|MINOR|DEVNAME)=' \"\$s\")\"; if [ -n \"\$DEVNAME\" ] && [ -n \"\$MAJOR\" ] && [ -n \"\$MINOR\" ]; then [ ! -e \"/dev/\$DEVNAME\" ] && mknod \"/dev/\$DEVNAME\" c \"\$MAJOR\" \"\$MINOR\" 2>/dev/null; case \"\$DEVNAME\" in BYNb|mem_tool|nh|wanbai) chmod 666 \"/dev/\$DEVNAME\" 2>/dev/null;; esac; fi; fi; done",
                 "for n in /dev/BYNb /dev/mem_tool /dev/nh /dev/wanbai; do if [ -e \"\$n\" ]; then chmod 666 \"\$n\" 2>/dev/null; fi; done"
             )
