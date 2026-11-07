@@ -89,9 +89,6 @@ class LoginActivity : ComponentActivity() {
                         )
                     } else {
                         LoginScreen(
-                            onOpenSetup = {
-                                showSetup = true
-                            },
                             onLoginSuccess = { email, name, apiKey, licenseRemainingSec, role, balance, activeKey, remember ->
                             sessionManager.isLoggedIn = true
                             sessionManager.userEmail = email

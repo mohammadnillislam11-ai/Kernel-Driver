@@ -84,7 +84,6 @@ enum class AuthScreenState {
 
 @Composable
 fun LoginScreen(
-    onOpenSetup: (() -> Unit)? = null,
     onLoginSuccess: (
         email: String,
         name: String,
@@ -139,7 +138,6 @@ fun LoginScreen(
                 when (state) {
                     AuthScreenState.LOGIN -> {
                         LoginContent(
-                            onOpenSetup = onOpenSetup,
                             onSuccess = onLoginSuccess,
                             onNavigateToSignUp = { authState = AuthScreenState.SIGNUP },
                             onNavigateToForgotPassword = { authState = AuthScreenState.FORGOT_PASSWORD }
@@ -163,7 +161,6 @@ fun LoginScreen(
 
 @Composable
 private fun LoginContent(
-    onOpenSetup: (() -> Unit)? = null,
     onSuccess: (
         email: String,
         name: String,
@@ -240,40 +237,6 @@ private fun LoginContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (onOpenSetup != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.clickable { onOpenSetup() }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_nav_wrench),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(id = R.string.permission_setup_btn),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
         Surface(
             shape = RoundedCornerShape(22.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
